@@ -136,7 +136,8 @@
             
             <div class="month-nav">
               <el-button size="small" @click="prevMonth">◀ 上个月</el-button>
-              <el-button size="small" @click="resetToToday">回到今天</el-button>
+              <el-button size="small" @click="goOldest">最早</el-button>
+              <el-button size="small" @click="goLatest">最新</el-button>
               <el-button size="small" @click="nextMonth">下个月 ▶</el-button>
             </div>
           </div>
@@ -328,6 +329,20 @@ const earliestMonth = computed(() => {
   return parseInt(first.split('-')[1]) || 11;
 });
 
+// 从切片数据中找最新的年月
+const latestYear = computed(() => {
+  if (allSongs.value.length === 0) return currentYearNum;
+  const dates = allSongs.value.map(s => s.date).filter(Boolean);
+  if (dates.length === 0) return currentYearNum;
+  return Math.max(...dates.map(d => parseInt(d.split('-')[0])));
+});
+const latestMonth = computed(() => {
+  if (allSongs.value.length === 0) return new Date().getMonth() + 1;
+  const dates = allSongs.value.filter(s => s.date?.startsWith(String(latestYear.value))).map(s => s.date);
+  if (dates.length === 0) return new Date().getMonth() + 1;
+  return Math.max(...dates.map(d => parseInt(d.split('-')[1])));
+});
+
 // 生成年份列表 (从最早数据年份到当前年份)
 const yearList = computed(() => {
   const years = [];
@@ -337,17 +352,15 @@ const yearList = computed(() => {
   return years;
 });
 
-// 当前选中年份下可选的月份（从最早有数据月到当前实际月）
+// 当前选中年份下可选的月份（从最早有数据月到最新有数据月）
 const monthList = computed(() => {
-  const nowYear = new Date().getFullYear();
-  const nowMonth = new Date().getMonth() + 1;
   let start = 1;
   let end = 12;
   if (selectedYear.value === earliestYear.value) {
     start = earliestMonth.value;
   }
-  if (selectedYear.value === nowYear) {
-    end = nowMonth;
+  if (selectedYear.value === latestYear.value) {
+    end = latestMonth.value;
   }
   const months = [];
   for (let m = start; m <= end; m++) {
@@ -391,8 +404,8 @@ const nextMonth = () => {
   const now = new Date();
   const nowYear = now.getFullYear();
   const nowMonth = now.getMonth() + 1;
-  if (selectedYear.value === nowYear && selectedMonth.value >= nowMonth) {
-    ElMessage.warning('该月目前还未至');
+  if (selectedYear.value === latestYear.value && selectedMonth.value >= latestMonth.value) {
+    ElMessage.warning('暂无更新的切片本');
     return;
   }
   if (selectedMonth.value === 12) {
@@ -404,12 +417,28 @@ const nextMonth = () => {
   updateCalendar();
 };
 
-// 回到今天
-const resetToToday = () => {
-  const today = new Date();
-  calendarDate.value = today;
-  selectedYear.value = today.getFullYear();
-  selectedMonth.value = today.getMonth() + 1;
+const goLatest = () => {
+  if (selectedYear.value === latestYear.value && selectedMonth.value === latestMonth.value) {
+    ElMessage.warning('已是最新的切片本记录月');
+    return;
+  }
+  resetToLatest();
+};
+
+const goOldest = () => {
+  if (selectedYear.value === earliestYear.value && selectedMonth.value === earliestMonth.value) {
+    ElMessage.warning('已是最久远的切片本记录月');
+    return;
+  }
+  selectedYear.value = earliestYear.value;
+  selectedMonth.value = earliestMonth.value;
+  updateCalendar();
+};
+
+const resetToLatest = () => {
+  selectedYear.value = latestYear.value;
+  selectedMonth.value = latestMonth.value;
+  updateCalendar();
 };
 
 onMounted(async () => {
@@ -420,7 +449,10 @@ onMounted(async () => {
       allSongs.value = await res.json();
     }
   } catch (e) { console.error(e); } 
-  finally { loading.value = false; }
+  finally {
+    loading.value = false;
+    resetToLatest();
+  }
 });
 
 const filteredList = computed(() => {

@@ -30,7 +30,8 @@
             </el-select>
             <div class="month-nav">
               <el-button size="small" @click="prevMonth">◀ 上个月</el-button>
-              <el-button size="small" @click="goToday">今天</el-button>
+              <el-button size="small" @click="goOldest">最早</el-button>
+              <el-button size="small" @click="goLatest">最新</el-button>
               <el-button size="small" @click="nextMonth">下个月 ▶</el-button>
             </div>
           </div>
@@ -87,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, defineExpose } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheck } from '@element-plus/icons-vue'
 import { useReplayData } from '@/composables/useReplayData'
@@ -120,16 +121,27 @@ const earliestMonth = computed(() => {
   return parseInt(dates.sort()[0].split('-')[1])
 })
 
+const latestYear = computed(() => {
+  const dates = Object.keys(replaysByDate.value).filter(Boolean)
+  if (dates.length === 0) return currentYearNum
+  return Math.max(...dates.map(d => parseInt(d.split('-')[0])))
+})
+const latestMonth = computed(() => {
+  const dates = Object.keys(replaysByDate.value)
+    .filter(d => d.startsWith(String(latestYear.value)))
+  if (dates.length === 0) return new Date().getMonth() + 1
+  return Math.max(...dates.map(d => parseInt(d.split('-')[1])))
+})
+
 const yearList = computed(() => {
   const years = []
   for (let y = earliestYear.value; y <= currentYearNum; y++) years.push(y)
   return years
 })
 const monthList = computed(() => {
-  const nowMonth = new Date().getMonth() + 1
   let start = 1, end = 12
   if (selectedYear.value === earliestYear.value) start = earliestMonth.value
-  if (selectedYear.value === currentYearNum) end = nowMonth
+  if (selectedYear.value === latestYear.value) end = latestMonth.value
   const months = []
   for (let m = start; m <= end; m++) months.push(m)
   return months
@@ -172,8 +184,8 @@ function prevMonth() {
 }
 
 function nextMonth() {
-  if (selectedYear.value === currentYearNum && selectedMonth.value >= new Date().getMonth() + 1) {
-    ElMessage.warning('该月目前还未至')
+  if (selectedYear.value === latestYear.value && selectedMonth.value >= latestMonth.value) {
+    ElMessage.warning('暂无更新的录播')
     return
   }
   if (selectedMonth.value === 12) { selectedMonth.value = 1; selectedYear.value++ }
@@ -181,12 +193,35 @@ function nextMonth() {
   onYearMonthChange()
 }
 
-function goToday() {
-  const t = new Date()
-  selectedYear.value = t.getFullYear()
-  selectedMonth.value = t.getMonth() + 1
-  calendarDate.value = t
+async function goLatest() {
+  await loadAll()
+  if (selectedYear.value === latestYear.value && selectedMonth.value === latestMonth.value) {
+    ElMessage.warning('已是最新的录播记录月')
+    return
+  }
+  selectedYear.value = latestYear.value
+  selectedMonth.value = latestMonth.value
+  onYearMonthChange()
 }
+
+async function goOldest() {
+  await loadAll()
+  if (selectedYear.value === earliestYear.value && selectedMonth.value === earliestMonth.value) {
+    ElMessage.warning('已是最久远的录播记录月')
+    return
+  }
+  selectedYear.value = earliestYear.value
+  selectedMonth.value = earliestMonth.value
+  onYearMonthChange()
+}
+
+function resetToLatest() {
+  selectedYear.value = latestYear.value
+  selectedMonth.value = latestMonth.value
+  onYearMonthChange()
+}
+
+defineExpose({ resetToLatest })
 
 function onYearMonthChange() {
   if (monthList.value.length > 0 && !monthList.value.includes(selectedMonth.value)) {
@@ -204,8 +239,9 @@ function loadAllReplays() {
   loadAll()
 }
 
-onMounted(() => {
-  if (!loaded.value) quickLoad()
+onMounted(async () => {
+  if (!loaded.value) await quickLoad()
+  resetToLatest()
 })
 </script>
 
