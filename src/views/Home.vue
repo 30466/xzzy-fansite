@@ -401,9 +401,6 @@ const prevMonth = () => {
 
 // 下个月
 const nextMonth = () => {
-  const now = new Date();
-  const nowYear = now.getFullYear();
-  const nowMonth = now.getMonth() + 1;
   if (selectedYear.value === latestYear.value && selectedMonth.value >= latestMonth.value) {
     ElMessage.warning('暂无更新的切片本');
     return;
