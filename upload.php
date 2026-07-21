@@ -78,6 +78,11 @@ function regenerateSongsJson($sourceDir, $outputFile) {
         return strcmp($b['date'], $a['date']);
     });
 
+    $outputDir = dirname($outputFile);
+    if (!is_dir($outputDir)) {
+        mkdir($outputDir, 0755, true);
+    }
+
     file_put_contents($outputFile, json_encode($allSongs, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     return count($allSongs);
 }
@@ -86,8 +91,11 @@ function regenerateSongsJson($sourceDir, $outputFile) {
 $env = loadEnv(__DIR__ . '/.env');
 $ACCESS_PASSWORD = isset($env['UPLOAD_PASSWORD']) ? $env['UPLOAD_PASSWORD'] : '';
 $TARGET_DIR = __DIR__ . '/scripts/txt_source/';
-$SONGS_FILE = __DIR__ . '/public/data/songs.json';
-$VIDEOCLIP_FILE = __DIR__ . '/public/data/videoclips.json';
+
+// 自动适配本地 dev (public/data/) 和生产 (data/) 路径
+$DATA_DIR = is_dir(__DIR__ . '/public/data') ? __DIR__ . '/public/data' : __DIR__ . '/data';
+$SONGS_FILE = $DATA_DIR . '/songs.json';
+$VIDEOCLIP_FILE = $DATA_DIR . '/videoclips.json';
 
 // ═══════════════════════════
 // 路由：视频切片表单提交
