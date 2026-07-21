@@ -2,13 +2,26 @@
   <div class="about-page">
     <el-card class="about-card">
       <h2>关于本站 🎶</h2>
-      <p>这里是 GNZ48-徐郑子滢 的个人应援存档站。域名为abm48.com均为本人所有</p>
+      <p>这里是 GNZ48 徐郑子滢的个人应援存档站。域名为abm48.com均为本人所有</p>
       <p>主要用于记录直播中的唱歌切片时间点，方便大家剪辑唱歌视频/音频,以及考古和安利</p>
-      <p>其他家需要唱歌记录网站可以来找我，换个背景图和个别字，然后部署到abm48.com的二级域名而已，10分钟就能弄完</p>  
+      <p>可找我做同款或者定制应援站</p>  
+      <el-divider />
+      
+      <h3>🎬 关于B站安利</h3>
+      <p>B站安利页面选取了固定的UP主（粉丝/产出账号），爬取他们全部的视频列表信息，并筛选出标题中含有「徐郑子滢」的视频进行展示。</p>
+      <p>之所以不直接调用B站搜索API，是因为B站搜索结果是全站范围的，可能会混入：</p>
+      <ul>
+        <li><b>CP相关内容</b> — 可能涉及其他成员，与本应援站的定位不符</li>
+        <li><b>负面或招黑内容</b> — 标题党、引战视频等，不利于维护偶像形象</li>
+        <li><b>无关内容</b> — 同名或相似关键词的误匹配</li>
+      </ul>
+      <p>通过固定UP主 + 标题筛选的方式，可以确保展示的都是粉丝产出的正面安利向内容，避免不可控的信息风险。</p>
+      <p>UP主列表会不定时爬取持续更新，如果你知道有优质产出账号未被收录，欢迎联系我补充。</p>
+
       <el-divider />
       
       <h3>✂️ 关于剪辑</h3>
-      <p>平时我直接使用自己写好的五个skills（包括下载查询口袋 48 录播；批量剪切，包含切片本，支持该网站的一键剪切功能，而且更快，因为浏览器都有限制；批量上传歌曲的小偶像音乐网站；批量上传切片本到该网站；弹幕唱歌检测，使用脚本固定词和纯大语言模型交叉检验；这些skills都在置顶导航条的"工具"网站可查询），切片本正是本网站前端数据根基</p>
+      <p>平时我直接使用自己写好的五个skills（包括下载查询口袋 48 录播；批量剪切，包含切片本，支持该网站的一键剪切功能，而且更快，因为浏览器都有限制；批量上传歌曲的小偶像音乐网站；批量上传切片本到该网站；弹幕唱歌检测，使用脚本和纯大语言模型交叉检验；这些skills都在置顶导航条的“工具“网站可查询），切片本正是本网站前端数据根基</p>
       <p>做这个网站就是想记录一下，然后给其他老师提供切片本。可以下载自推的唱歌切片或者以后可能还有视频切片。只要一个老师上传，其他老师就无需重复工作</p>
       <div class="contact-section">
         <h3 class="contact-subtitle">如果你想与我交流，可以通过以下方式联系我</h3>
@@ -31,6 +44,7 @@
       </div>
     </el-card>
 
+    <!-- 二维码弹窗 -->
     <el-dialog
       v-model="qrVisible"
       width="340px"
@@ -41,6 +55,7 @@
         <span class="dialog-title">{{ qrTitle }}</span>
       </template>
       <div class="qr-container">
+        <!-- 这里的图片需要你在 assets 里放入 qq.jpg 和 wechat.jpg -->
         <img :src="currentQrImg" alt="QR Code" class="qr-image" />
         <p class="qr-desc">扫一扫上面二维码图案，加我为朋友。</p>
       </div>
@@ -59,7 +74,7 @@ onMounted(() => {
 });
 
 const qrVisible = ref(false);
-const qrType = ref('wechat');
+const qrType = ref('wechat'); // 'wechat' or 'qq'
 
 const qrTitle = computed(() => qrType.value === 'wechat' ? '微信二维码' : 'QQ二维码');
 const currentQrImg = computed(() => qrType.value === 'wechat' ? wechatImg : qqImg);
@@ -86,6 +101,7 @@ a { color: #409EFF; text-decoration: none; }
   font-size: 18px;
 }
 
+/* 联系我 */
 .contact-section {
   margin-top: 50px;
   text-align: center;
@@ -127,6 +143,7 @@ a { color: #409EFF; text-decoration: none; }
 
 .contact-btn { background-color: #204fa1; }
 
+/* 二维码弹窗 */
 .qr-container {
   text-align: center;
   padding: 12px 0;

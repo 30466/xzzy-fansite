@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "gen": "node scripts/gen-data.js"
+    "gen": "node scripts/gen-data.js",
+    "sync-bili": "node scripts/merge-bilibili.js"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
     "sass": "^1.94.2",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

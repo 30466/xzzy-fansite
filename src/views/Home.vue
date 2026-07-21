@@ -5,7 +5,7 @@
     <el-card class="notice-card">
       <template #header>
         <div class="card-header">
-          <span class="header-title">💡 检索说明</span>
+          <span class="header-title">💡 说明</span>
           <div class="header-actions">
             <!-- 1. 新增的上传按钮 -->
             <router-link to="/upload" class="upload-link">
@@ -31,9 +31,10 @@
         </div>
       </template>
       <div class="notice-content">
-        <p>1. 本站日期以<b>第二天凌晨 06:00</b>为界，归档为前一天。本站只有从<b>2025-11-01</b>及其之后的记录</p>
-        <p>2. 点击<b>"听歌"</b>会自动搜索并播放，底部播放器可查看歌曲详情</p>
+        <p>1. 本站日期以<b>第二天凌晨 06:00</b>为界，归档为前一天</p>
+        <p>2. 点击<b>”听歌”</b>会自动搜索并播放，底部播放器可查看歌曲详情</p>
         <p>3. 本网站仅支持<b>歌名</b>和<b>日期</b>搜索。如要<b>精确搜索</b>如<b>歌手</b>,<b>语种</b>等，请到小偶像音乐网站搜索</p>
+        <p>4. 如果剪切时日志出现 <b>HTTP 478</b> 失败，则是口袋48录播源文件损坏，非网络或本网站问题</p>
       </div>
     </el-card>
 
@@ -55,13 +56,23 @@
     <!-- 模式 A: 切片列表 -->
     <div v-show="viewMode === 'songs'">
       <div class="search-section">
-        <el-input
+        <el-autocomplete
           v-model="searchText"
+          :fetch-suggestions="searchSuggestions"
           placeholder="输入歌名 或 日期 (例如: 20251123)..."
           size="large"
-          prefix-icon="Search"
           clearable
-        />
+          :trigger-on-focus="false"
+          style="width: 100%"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+          <template #default="{ item }">
+            <span v-if="item.type === 'date'">📅 {{ item.value }}</span>
+            <span v-else>🎵 {{ item.value }}</span>
+          </template>
+        </el-autocomplete>
       </div>
 
       <div class="song-list" v-loading="loading">
@@ -198,13 +209,13 @@
         <div class="setting-item" style="margin-top: 15px">
           <span class="label">格式：</span>
           <el-select v-model="clipTargetFormat" style="width: 140px" size="large">
-            <el-option v-if="clipOutputCategory === 'video'" label="TS (默认)" value="ts" />
-            <el-option v-if="clipOutputCategory === 'video'" label="MP4" value="mp4" />
+            <el-option v-if="clipOutputCategory === 'video'" label="MP4 (默认)" value="mp4" />
+            <el-option v-if="clipOutputCategory === 'video'" label="TS" value="ts" />
             <el-option v-if="clipOutputCategory === 'video'" label="MKV" value="mkv" />
             <el-option v-if="clipOutputCategory === 'video'" label="AVI" value="avi" />
             <el-option v-if="clipOutputCategory === 'video'" label="MOV" value="mov" />
             <el-option v-if="clipOutputCategory === 'video'" label="WEBM" value="webm" />
-            <el-option v-if="clipOutputCategory === 'video'" label="GIF" value="gif" />
+            <el-option v-if="clipOutputCategory === 'video'" label="GIF" value="gif" :disabled="embedDanmaku" />
             <el-option v-if="clipOutputCategory === 'audio'" label="M4A (默认)" value="m4a" />
             <el-option v-if="clipOutputCategory === 'audio'" label="MP3" value="mp3" />
             <el-option v-if="clipOutputCategory === 'audio'" label="FLAC" value="flac" />
@@ -219,6 +230,7 @@
           <el-input-number v-model="clipConcurrency" :min="5" :max="30" :step="5" size="large" style="width: 120px" />
           <span class="tip" style="font-size: 12px; color: #909399; margin-left: 8px">同时下载分片数</span>
         </div>
+        <DanmakuToggle v-model="embedDanmaku" :disabled="clipOutputCategory === 'audio'" />
       </div>
       <el-divider />
       <div class="log-box" ref="clipLogRef">
@@ -253,8 +265,11 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import JSZip from 'jszip'; 
 import { ElMessage } from 'element-plus';
 import { Scissor } from '@element-plus/icons-vue';
+import { Search } from '@element-plus/icons-vue';
 import * as p48 from '@/api/pocket48';
 import { FFmpegManager } from '@/composables/useFFmpeg';
+import { useDanmakuEmbed } from '@/composables/useDanmakuEmbed';
+import DanmakuToggle from '@/components/DanmakuToggle.vue';
 import audioPlayer from '@/composables/useAudioPlayer';
 import SongSearchResults from '@/components/SongSearchResults.vue';
 	const searchVisible = ref(false);
@@ -275,12 +290,21 @@ const currentFile = ref({ filename: '', content: '' });
 const clipDialogVisible = ref(false);
 const clipTarget = ref(null);
 const clipOutputCategory = ref('video');
-const clipTargetFormat = ref('ts');
+const clipTargetFormat = ref('mp4');
 const isClipping = ref(false);
 const clipLogs = ref([]);
 const clipLogRef = ref(null);
-const clipConcurrency = ref(15);
+const clipConcurrency = ref(10);
 const clipAbortController = ref(null);
+const embedDanmaku = ref(false);
+const { prepareDanmaku: prepareDanmakuEmbed } = useDanmakuEmbed();
+
+watch(embedDanmaku, (on) => {
+  if (on) {
+    clipOutputCategory.value = 'video'
+    if (clipTargetFormat.value === 'gif') clipTargetFormat.value = 'mp4'
+  }
+})
 
 const addClipLog = (msg) => {
   clipLogs.value.push(msg);
@@ -306,7 +330,7 @@ const ffmpegMgr = new FFmpegManager((msg) => {
 });
 
 watch(clipOutputCategory, (cat) => {
-  clipTargetFormat.value = cat === 'video' ? 'ts' : 'm4a';
+  clipTargetFormat.value = cat === 'video' ? 'mp4' : 'm4a';
 });
 
 // --- 日历控制变量 ---
@@ -439,7 +463,7 @@ const resetToLatest = () => {
 };
 
 onMounted(async () => {
-  document.title = '徐郑子滢 ✽ 直播唱歌记录';
+  document.title = '徐郑子滢 ✽ 应援存档站';
   try {
     const res = await fetch(`/data.json?t=${new Date().getTime()}`);
     if (res.ok) {
@@ -464,6 +488,39 @@ const filteredList = computed(() => {
            dateNoDash.includes(queryNoDash);
   });
 });
+
+// 搜索自动补全
+const searchSuggestions = (query, cb) => {
+  if (!query || query.length < 1) { cb([]); return; }
+  const q = query.toLowerCase().trim();
+  const qNoDash = q.replace(/-/g, '');
+
+  // 日期匹配
+  const dateSet = new Set();
+  const dateResults = [];
+  for (const s of allSongs.value) {
+    if (!s.date) continue;
+    const d = s.date;
+    const dNoDash = d.replace(/-/g, '');
+    if ((d.includes(q) || dNoDash.includes(qNoDash)) && !dateSet.has(d)) {
+      dateSet.add(d);
+      dateResults.push({ value: dNoDash, type: 'date' });
+    }
+  }
+
+  // 歌名匹配
+  const nameSet = new Set();
+  const nameResults = [];
+  for (const s of allSongs.value) {
+    const n = s.cleanName;
+    if (n.toLowerCase().includes(q) && !nameSet.has(n)) {
+      nameSet.add(n);
+      nameResults.push({ value: n, type: 'song' });
+    }
+  }
+
+  cb([...dateResults, ...nameResults]);
+};
 
 const fileCount = computed(() => {
   const files = new Set(filteredList.value.map(item => item.filename));
@@ -648,6 +705,41 @@ const handleClipSong = async () => {
 
     const startSec = p48.timeToSeconds(item.startTime);
     const endSec = p48.timeToSeconds(item.endTime);
+
+    // ── 弹幕嵌入：获取 LRC + 生成 drawtext 滤镜链 ──
+    let danmakuCleanup = null
+    let danmakuFilterArgs = []
+    let danmakuVideoArgs = []
+    let danmakuAudioArgs = []
+    if (embedDanmaku.value && clipOutputCategory.value === 'video') {
+      const msgFilePath = detail?.content?.msgFilePath
+      if (!msgFilePath) {
+        addClipLog('⚠️ 该录播没有弹幕文件，跳过弹幕嵌入')
+      } else {
+        try {
+          addClipLog('🎬 正在获取弹幕...')
+          const danmakuUrl = p48.proxySourceUrl(msgFilePath)
+          const resp = await fetch(danmakuUrl)
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+          const lrcText = await resp.text()
+          const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addClipLog, { startSec, endSec })
+          if (result.empty) {
+            addClipLog('⚠️ 该片段内没有弹幕，跳过嵌入')
+          } else {
+            danmakuFilterArgs = result.filterArgs
+            danmakuVideoArgs = result.videoCodecArgs
+            danmakuAudioArgs = result.audioCodecArgs
+            danmakuCleanup = result.cleanup
+            addClipLog(`✅ 弹幕嵌入已就绪`)
+          }
+        } catch (e) {
+          console.error('Danmaku error:', e)
+          const msg = e?.message || String(e) || '未知错误'
+          addClipLog(`⚠️ 弹幕嵌入失败: ${msg}，将正常剪切`)
+        }
+      }
+    }
+
     const padding = 10;
     const paddedStart = Math.max(0, startSec - padding);
     const paddedEnd = endSec + padding;
@@ -779,7 +871,10 @@ const handleClipSong = async () => {
     addClipLog(`✂️ 剪切: ${item.cleanName} -> ${format.toUpperCase()}`);
     const copyable = ['ts', 'mp4', 'mkv', 'avi', 'mov', 'webm', 'm4a'];
 
-    if (copyable.includes(format)) {
+    if (embedDanmaku.value && danmakuFilterArgs.length > 0 && !isAudio) {
+      addClipLog('🎬 嵌入弹幕（重编码）...')
+      await ffmpegMgr.ffmpeg.exec([...baseCmd, ...danmakuFilterArgs, ...danmakuVideoArgs, ...danmakuAudioArgs, outputName])
+    } else if (copyable.includes(format)) {
       try {
         const copyCmd = isAudio
           ? [...baseCmd, '-vn', '-c:a', 'copy', outputName]
@@ -800,6 +895,7 @@ const handleClipSong = async () => {
     downloadBlob(data, `${item.cleanName}${outExt}`);
     await ffmpegMgr.ffmpeg.deleteFile(outputName);
     await ffmpegMgr.ffmpeg.deleteFile('concat.ts');
+    if (danmakuCleanup) await danmakuCleanup();
 
     if (!(await ffmpegMgr.isAlive())) {
       addClipLog('♻️ FFmpeg 实例已终止，正在重建...');

@@ -38,7 +38,7 @@ function addReplays(liveList) {
 }
 
 async function quickLoad() {
-  if (loaded.value) return
+  if (loaded.value) return  // already loaded, skip
   loading.value = true
   totalCount.value = 0
   replaysByDate.value = {}
@@ -73,6 +73,7 @@ async function loadAll() {
 
   try {
     if (loadedAll.value) {
+      // Re-scan from beginning, only add new records
       let next = '0'
       let newCount = 0
       while (next) {

@@ -3,12 +3,20 @@
     <el-card class="upload-card">
       <template #header>
         <div class="card-header">
-          <span class="header-title">☁️ 切片本上传后台</span>
+          <span class="header-title">📄 唱歌切片本上传</span>
           <router-link to="/">
             <el-button link>返回首页</el-button>
           </router-link>
         </div>
       </template>
+
+      <!-- ═══════ 唱歌切片本上传 ═══════ -->
+
+      <div class="desc-block">
+        <p>📌 <b>命名规则</b>：以录播时间命名的 <code>.txt</code> 文件，例如 <code>2026-03-10~00.39.31.txt</code></p>
+        <p>📌 <b>格式要求</b>：严格按照唱歌记录切片本的格式，可在本站「口袋48录播回放」→「批量剪切」中剪切获取</p>
+        <p>📌 <b>管理员密码</b>：请在<b>关于页</b>联系我</p>
+      </div>
 
       <!-- 1. 密码验证区 -->
       <div class="section">
@@ -91,6 +99,68 @@
       </div>
 
     </el-card>
+
+    <!-- ═══════ 视频切片提交 ═══════ -->
+    <el-card class="upload-card videoclip-section">
+      <template #header>
+        <span class="section-header-title">🎬 视频切片提交</span>
+      </template>
+
+      <el-form :model="clipForm" label-width="100px" label-position="top" size="large">
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="切片名称">
+              <el-input v-model="clipForm.name" placeholder="例如：为什么选择丝芭，来丝芭前面试了很多公司" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="开始时间">
+              <el-input v-model="clipForm.startTime" placeholder="HH:MM:SS 或 MM:SS" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="结束时间">
+              <el-input v-model="clipForm.endTime" placeholder="HH:MM:SS 或 MM:SS" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="选择录播">
+          <ReplayPicker v-model="clipForm.replay" />
+        </el-form-item>
+
+        <div class="actions">
+          <el-button
+            type="success"
+            size="large"
+            :loading="clipSubmitting"
+            :disabled="!clipForm.name || !clipForm.startTime || !clipForm.endTime || !clipForm.replay"
+            @click="submitVideoClip"
+            class="submit-btn"
+          >
+            <el-icon><UploadFilled /></el-icon>
+            {{ clipSubmitting ? '提交中...' : '提交视频切片' }}
+          </el-button>
+        </div>
+
+        <div class="log-container" v-if="clipLogs.length > 0">
+          <div class="log-title">提交日志：</div>
+          <div class="log-box">
+            <div
+              v-for="(log, idx) in clipLogs"
+              :key="'clip-'+idx"
+              class="log-line"
+              :class="{'error': log.includes('❌') || log.includes('⚠️'), 'success': log.includes('✅') || log.includes('🎉')}"
+            >
+              {{ log }}
+            </div>
+          </div>
+        </div>
+      </el-form>
+    </el-card>
   </div>
 </template>
 
@@ -98,9 +168,10 @@
 import { ref, onMounted } from 'vue';
 import { FolderAdd, UploadFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import ReplayPicker from '@/components/ReplayPicker.vue';
 
 onMounted(() => {
-  document.title = '徐郑子滢 ✽ 上传切片本';
+  document.title = '徐郑子滢 ✽ 上传';
 });
 
 // 这里的 URL 是刚才创建的 php 文件，因为在同一个域名下，用相对路径即可
@@ -176,6 +247,78 @@ const submitUpload = async () => {
     uploading.value = false;
   }
 };
+
+// ── 视频切片表单 ──
+const clipForm = ref({
+  name: '',
+  startTime: '',
+  endTime: '',
+  replay: null  // ReplayPicker 选中的录播对象
+});
+const clipSubmitting = ref(false);
+const clipLogs = ref([]);
+
+const submitVideoClip = async () => {
+  const form = clipForm.value;
+  if (!form.replay) {
+    ElMessage.warning('请选择录播');
+    return;
+  }
+  if (!password.value) {
+    ElMessage.warning('请在上方输入管理员密码');
+    return;
+  }
+
+  clipSubmitting.value = true;
+  clipLogs.value = ['🚀 正在提交视频切片...'];
+
+  // 格式化录播时间
+  const fmtReplayTime = (ms) => {
+    const d = new Date(Number(ms));
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
+
+  // 获取录播归档日期（6点规则）
+  const getReplayDate = (ms) => {
+    const d = new Date(Number(ms));
+    d.setHours(d.getHours() - 6);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const formData = new FormData();
+  formData.append('type', 'videoclip');
+  formData.append('password', password.value);
+  formData.append('name', form.name);
+  formData.append('startTime', form.startTime);
+  formData.append('endTime', form.endTime);
+  formData.append('broadcastTime', fmtReplayTime(form.replay.ctime));
+  formData.append('replayTitle', form.replay.title || '');
+  formData.append('liveId', String(form.replay.liveId));
+  formData.append('replayDate', getReplayDate(form.replay.ctime));
+
+  try {
+    const res = await fetch(UPLOAD_URL, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.logs) {
+      clipLogs.value = [...clipLogs.value, ...data.logs];
+    }
+    if (data.success) {
+      ElMessage.success('视频切片提交成功！');
+      // 清空表单
+      clipForm.value = { name: '', startTime: '', endTime: '', replay: null };
+    } else {
+      ElMessage.warning('提交存在问题，请查看日志');
+    }
+  } catch (error) {
+    clipLogs.value.push(`❌ 网络或解析错误: ${error.message}`);
+  } finally {
+    clipSubmitting.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -204,6 +347,27 @@ const submitUpload = async () => {
 
 .section {
   margin-bottom: 20px;
+}
+
+.desc-block {
+  background: #f5f7fa;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #606266;
+}
+
+.desc-block p {
+  margin: 0;
+}
+
+.desc-block code {
+  background: #e9ecef;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 13px;
 }
 
 .label {
@@ -267,4 +431,22 @@ const submitUpload = async () => {
 
 .log-line.error { color: #ff6b81; }
 .log-line.success { color: #67c23a; }
+
+/* 视频切片区 */
+.videoclip-section {
+  margin-top: 20px;
+}
+.section-header {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ebeef5;
+}
+.section-header-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+}
 </style>

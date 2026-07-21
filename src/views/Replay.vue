@@ -1,9 +1,11 @@
 <template>
   <div class="replay-page" :class="{ 'split-mode': currentReplay }">
+    <!-- State A: Calendar -->
     <template v-if="!currentReplay">
       <ReplayCalendar @select-replay="onSelectReplay" />
     </template>
 
+    <!-- State B: Split layout -->
     <template v-else>
       <div class="split-container">
         <div class="player-area" :class="{ 'player-full': !showPanel }">
@@ -41,7 +43,7 @@
           </div>
           <div class="panel-body">
             <ReplayInfo v-show="activeTab==='info'" :info="replayDetail?.info" :cover-url="replayDetail?.coverUrl||''" :danmaku-url="replayDetail?.danmakuUrl||''" :m3u8-url="replayDetail?.m3u8Url||''" :cover-source-url="replayDetail?.coverSourceUrl||''" :danmaku-source-url="replayDetail?.danmakuSourceUrl||''" :player-duration="measuredDuration" />
-            <P48ClipPanel v-show="activeTab==='clip'" :m3u8-url="replayDetail?.m3u8Url||''" member="徐郑子滢" :broadcast-time="formattedBroadcastTime" />
+            <P48ClipPanel v-show="activeTab==='clip'" :m3u8-url="replayDetail?.m3u8Url||''" member="徐郑子滢" :broadcast-time="formattedBroadcastTime" :danmaku-url="replayDetail?.danmakuUrl||''" />
             <DanmakuTimeline v-show="activeTab==='danmaku'" :danmaku-data="playerDanmaku" :current-time="playerTime" @seek="onDanmakuSeek" />
           </div>
         </div>
@@ -112,6 +114,7 @@ function restoreState(liveId) {
     if (!raw) return false
     const saved = JSON.parse(raw)
     if (!saved.currentReplay || String(saved.currentReplay.liveId) !== String(liveId)) return false
+    // Reject stale cache that's missing critical fields (pre-fix data)
     if (!saved.replayDetail?.m3u8Url) {
       console.log('[Replay] cached data missing m3u8Url, skipping cache')
       return false
@@ -144,6 +147,7 @@ async function onSelectReplay(r, options = {}) {
   activeTab.value = 'info'
 
   try {
+    // Always call getLiveOne for full detail (msgFilePath, userInfo, etc.)
     let c = options.prefetchedContent
     if (!c) {
       const detail = await p48.getLiveOne(r.liveId)
@@ -253,6 +257,7 @@ async function autoLoadFromURL() {
 }
 
 onMounted(() => {
+  document.title = '徐郑子滢 ✽ 口袋48录播回放'
   if (route.query.live) autoLoadFromURL()
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('resize', onResize)
@@ -313,6 +318,7 @@ function onResize() {
   overflow-y: auto;
 }
 
+/* Player overlay: back button + title */
 .player-overlay-top {
   position: absolute;
   top: 10px;
@@ -330,6 +336,7 @@ function onResize() {
   text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
+/* Expand button on player right edge */
 .player-expand-btn {
   position: absolute;
   right: 0;
@@ -350,11 +357,13 @@ function onResize() {
   background: rgba(64,158,255,0.7);
 }
 
+/* Calendar tab */
 :deep(.el-tabs__nav) { width: 100%; }
 :deep(.el-tabs__item) { flex: 1; justify-content: center; color: #ccc; }
 :deep(.el-tabs__item.is-active) { color: #409eff; }
 :deep(.el-tabs__nav-wrap::after) { background: rgba(255,255,255,0.1); }
 
+/* ── Mobile ── */
 @media (max-width: 768px) {
   .split-mode .split-container {
     flex-direction: column;

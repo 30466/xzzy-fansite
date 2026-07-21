@@ -126,3 +126,8 @@ export function proxyCDN(url) {
   const idx = url.indexOf('/', url.indexOf('//') + 2)
   return '/cdn' + url.substring(idx)
 }
+
+/** 将 source.48.cn 的 URL 转为 Vite 代理路径 */
+export function proxySourceUrl(url) {
+  return url.replace('https://source.48.cn', '/source48')
+}
