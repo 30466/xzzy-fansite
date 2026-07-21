@@ -14,7 +14,7 @@
 | `public/icon-192.png` | 由 `scripts/generate-icons.py` 从 bg.jpg 生成 |
 | `public/icon-512.png` | 同上 |
 | `public/data/songs.json` | 由 `node scripts/gen-data.js` 从 `scripts/txt_source/` 生成 |
-| `public/data/videoclips.json` | 视频切片数据，wrs 专属 |
+| `public/data/videoclips.json` | 视频切片数据，tsh 专属 |
 | `public/data/bilibili-merged.json` | 由 `node scripts/merge-bilibili.js` 生成 |
 | `scripts/txt_source/` | 唱歌切片源数据 |
 | `scripts/merge-bilibili.js` | 读取 `xzzy-up-list.txt`，过滤 `吴睿莎` |
@@ -47,7 +47,7 @@ const quickTags = [
 ```
 
 ### 2.4 `scripts/merge-bilibili.js`
-- 读取 `wrs-up-list.txt` 而非 `tsh-up-list.txt`
+- 读取 `xzzy-up-list.txt` 而非 `tsh-up-list.txt`
 - 过滤标题包含 `徐郑子滢` 而非 `谭思慧`
 
 ### 2.5 `index.html`
