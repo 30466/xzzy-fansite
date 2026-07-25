@@ -230,7 +230,7 @@
           <el-input-number v-model="clipConcurrency" :min="5" :max="30" :step="5" size="large" style="width: 120px" />
           <span class="tip" style="font-size: 12px; color: #909399; margin-left: 8px">同时下载分片数</span>
         </div>
-        <DanmakuToggle v-model="embedDanmaku" :disabled="clipOutputCategory === 'audio'" />
+        <DanmakuToggle v-model="embedDanmaku" v-model:duration="danmakuDuration" :disabled="clipOutputCategory === 'audio'" />
       </div>
       <el-divider />
       <div class="log-box" ref="clipLogRef">
@@ -297,6 +297,7 @@ const clipLogRef = ref(null);
 const clipConcurrency = ref(10);
 const clipAbortController = ref(null);
 const embedDanmaku = ref(false);
+const danmakuDuration = ref(12);
 const { prepareDanmaku: prepareDanmakuEmbed } = useDanmakuEmbed();
 
 watch(embedDanmaku, (on) => {
@@ -465,7 +466,7 @@ const resetToLatest = () => {
 onMounted(async () => {
   document.title = '徐郑子滢 ✽ 应援存档站';
   try {
-    const res = await fetch(`/data.json?t=${new Date().getTime()}`);
+    const res = await fetch(`/data/songs.json?t=${new Date().getTime()}`);
     if (res.ok) {
       allSongs.value = await res.json();
     }
@@ -612,7 +613,7 @@ const handleBatchDownload = async () => {
     const dateStr = new Date().toISOString().slice(0, 10);
     const link = document.createElement('a');
     link.href = URL.createObjectURL(content);
-    link.download = `xzzy_Archive_${dateStr}.zip`;
+    link.download = `Sihui_Archive_${dateStr}.zip`;
     link.click();
     ElMessage.success(`成功打包下载 ${processedFiles.size} 个文件！`);
   } catch (err) { ElMessage.error('打包下载失败'); } 
@@ -722,7 +723,10 @@ const handleClipSong = async () => {
           const resp = await fetch(danmakuUrl)
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
           const lrcText = await resp.text()
-          const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addClipLog, { startSec, endSec })
+          const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addClipLog, 
+            { startSec, endSec },
+            { duration: danmakuDuration.value }
+          )
           if (result.empty) {
             addClipLog('⚠️ 该片段内没有弹幕，跳过嵌入')
           } else {

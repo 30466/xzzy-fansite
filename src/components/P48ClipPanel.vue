@@ -62,7 +62,7 @@
         </el-select>
       </div>
     </div>
-    <DanmakuToggle v-model="embedDanmaku" :disabled="outputCategory !== 'video'" style="margin-top: 12px" />
+    <DanmakuToggle v-model="embedDanmaku" v-model:duration="danmakuDuration" :disabled="outputCategory !== 'video'" style="margin-top: 12px" />
 
     <div style="margin-top: 12px">
       <el-button
@@ -124,6 +124,7 @@ const progress = ref(0)
 const logs = ref(['等待 FFmpeg 加载...'])
 const logBoxRef = ref(null)
 const ffmpegReady = ref(false)
+const danmakuDuration = ref(12)
 
 const ffmpegMgr = new FFmpegManager(addLog)
 const ffmpegLoading = ref(false)
@@ -268,7 +269,10 @@ async function startClip() {
         const resp = await fetch(props.danmakuUrl)
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
         const lrcText = await resp.text()
-        const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addLog, { startSec: overallStart, endSec: overallEnd })
+        const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addLog, 
+          { startSec: overallStart, endSec: overallEnd },
+          { duration: danmakuDuration.value }
+        )
         if (result.empty) {
           addLog('⚠️ 片段范围内无弹幕，跳过嵌入')
         } else {

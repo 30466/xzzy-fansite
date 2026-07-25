@@ -72,17 +72,38 @@ async function ensureFont(ffmpeg, onLog) {
 
 // ── drawtext 弹幕生成 ──
 
-/** 移除 emoji 及其他字体不支持的符号 */
+/** 
+ * 严格过滤：只保留汉字、英文字母、数字及常用标点。
+ * 彻底杜绝 ᶻᶻ 等各种特殊符号导致的 FFmpeg 渲染乱码（方框/叉号）。
+ */
 function stripEmoji(s) {
-  // 去掉常见 emoji 范围的字符（BMP 符号 + SMP emoji）
-  return (s || '').replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, '')
+  if (!s) return ''
+  
+  // 1. 移除口袋48常见的 [obj] 占位符
+  let t = s.replace(/\[obj\]/gi, '')
+
+  // 2. 白名单正则：
+  // \u4e00-\u9fa5 : 汉字
+  // a-zA-Z0-9 : 英数字
+  // \s : 空格
+  // \u3000-\u303f\uff00-\uffef : 全角标点 (，。！？等)
+  // \x20-\x7e : 半角 ASCII 打印字符 (,.!? 等)
+  const regex = /[\u4e00-\u9fa5a-zA-Z0-9\s\u3000-\u303f\uff00-\uffef\x20-\x7e]/gu
+  const matches = t.match(regex)
+  
+  return matches ? matches.join('').trim() : ''
 }
 
 function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {}) {
-  const { videoWidth = 1280, videoHeight = 720, fontSize = 30,
-          scrollSpeed = 250, maxCount = 50 } = options
+  const { videoWidth = 1280, videoHeight = 720, 
+          fontSize = Math.floor(videoHeight / 25), // 动态字号
+          duration = 12, // 默认 12s 划过全屏
+          maxCount = 100 } = options
 
-  const maxTextWidthEst = 500
+  // 速度 = (屏幕宽度 + 预估最大弹幕宽度) / 期望时长
+  const scrollSpeed = Math.round((videoWidth + 800) / duration)
+
+  const maxTextWidthEst = 800
   const maxScrollTime = (videoWidth + maxTextWidthEst + 40) / scrollSpeed
 
   const relevant = danmakuList.filter(dm =>
@@ -100,9 +121,11 @@ function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {})
   for (let i = 0; i < selected.length; i++) {
     const dm = selected[i]
     const rawText = stripEmoji(dm.user ? `${dm.user} : ${dm.text}` : dm.text)
-    const textWidth = Math.round(rawText.length * fontSize * 0.5)
+    if (!rawText) continue
+
+    const textWidth = Math.round(rawText.length * fontSize * 0.6)
     const scrollDist = videoWidth + textWidth + 40
-    const duration = scrollDist / scrollSpeed
+    const itemDuration = scrollDist / scrollSpeed
     const virtualStart = dm.time - clipStartSec
     const visStart = Math.max(0, virtualStart)
 
@@ -114,7 +137,7 @@ function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {})
 
     const y = row * rowHeight + fontSize + 10
     const actualStart = Math.max(visStart, laneBusyUntil[row])
-    const actualEnd = actualStart + duration
+    const actualEnd = actualStart + itemDuration
     laneBusyUntil[row] = actualEnd + 0.1
 
     const fn = `dm_${i}.txt`
@@ -136,7 +159,7 @@ function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {})
 }
 
 export function useDanmakuEmbed() {
-  async function prepareDanmaku(ffmpeg, lrcText, videoMeta = {}, onLog, clipRange) {
+  async function prepareDanmaku(ffmpeg, lrcText, videoMeta = {}, onLog, clipRange, options = {}) {
     const danmakuList = parseLRC(lrcText)
     if (danmakuList.length === 0) {
       throw new Error('弹幕数据为空或解析失败，无法嵌入')
@@ -151,7 +174,8 @@ export function useDanmakuEmbed() {
     try {
       result = buildDrawtextChain(danmakuList, clipStart, clipEnd, {
         videoWidth: videoMeta.width || 1280,
-        videoHeight: videoMeta.height || 720
+        videoHeight: videoMeta.height || 720,
+        ...options
       })
     } catch (e) {
       throw new Error(`生成弹幕滤镜链失败: ${e?.message || String(e)}`)
@@ -168,7 +192,7 @@ export function useDanmakuEmbed() {
     }
 
     const filterArgs = ['-vf', result.chain]
-    const videoCodecArgs = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '18']
+    const videoCodecArgs = ['-c:v', 'libx264', '-preset', 'superfast', '-crf', '23']
     const audioCodecArgs = ['-c:a', 'aac']
 
     const cleanup = async () => {

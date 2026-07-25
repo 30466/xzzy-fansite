@@ -63,24 +63,24 @@ const DANMAKU_COLORS = [
   '#99FF66', '#FF99CC', '#99CCFF', '#FFCC66'
 ]
 
+/** 
+ * 回放器弹幕过滤：仅移除口袋48已知的纯乱码占位符 [obj]。
+ * 浏览器支持 Emoji，因此保留它们以增加趣味性。
+ */
+function cleanDanmakuText(s) {
+  if (!s) return ''
+  return s.replace(/\[obj\]/gi, '').trim()
+}
+
 /**
  * 将弹幕列表转为 ASS 滚动字幕
- *
- * @param {Array} danmakuList - parseLRC 的输出 [{ time, text, user }]
- * @param {Object} options
- * @param {number} options.videoWidth   - 视频宽度 (默认 1280)
- * @param {number} options.videoHeight  - 视频高度 (默认 720)
- * @param {number} options.fontSize     - 字体大小 (默认 36)
- * @param {number} options.duration     - 弹幕划过屏幕的秒数 (默认 8)
- * @param {number} options.opacity      - 透明度 0-1 (默认 0.85)
- * @returns {string} ASS 字幕内容
  */
 export function lrcToASS(danmakuList, options = {}) {
   const {
     videoWidth = 1280,
     videoHeight = 720,
-    fontSize = 36,
-    duration = 8,
+    fontSize = Math.floor(videoHeight / 25), 
+    duration = 12,
     opacity = 0.85
   } = options
 
@@ -136,7 +136,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const x2 = -textWidthEstimate - 20
 
     const tags = `{\\move(${x1},${y},${x2},${y})\\c&H${bgr}&}`
-    const displayText = dm.user ? `${dm.user}: ${dm.text}` : dm.text
+    const rawText = cleanDanmakuText(dm.text)
+    if (!rawText) continue
+    const displayText = dm.user ? `${dm.user}: ${rawText}` : rawText
     events += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${tags}${escapeASS(displayText)}\n`
   }
 

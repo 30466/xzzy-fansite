@@ -97,7 +97,7 @@
           <el-input-number v-model="clipConcurrency" :min="5" :max="30" :step="5" size="large" style="width: 120px" />
           <span class="tip" style="font-size: 12px; color: #909399; margin-left: 8px">同时下载分片数</span>
         </div>
-        <DanmakuToggle v-model="embedDanmaku" />
+        <DanmakuToggle v-model="embedDanmaku" v-model:duration="danmakuDuration" />
       </div>
       <el-divider />
       <div class="log-box" ref="clipLogRef">
@@ -207,6 +207,7 @@ const clipLogRef = ref(null);
 const clipConcurrency = ref(10);
 const clipAbortController = ref(null);
 const embedDanmaku = ref(false);
+const danmakuDuration = ref(12);
 const { prepareDanmaku: prepareDanmakuEmbed } = useDanmakuEmbed();
 
 // 如果当前选了 GIF 且开启弹幕，自动切到 mp4
@@ -324,7 +325,10 @@ const handleClip = async () => {
           const resp = await fetch(danmakuUrl)
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
           const lrcText = await resp.text()
-          const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addClipLog, { startSec, endSec })
+          const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addClipLog, 
+            { startSec, endSec },
+            { duration: danmakuDuration.value }
+          )
           if (result.empty) {
             addClipLog('⚠️ 该片段内没有弹幕，跳过嵌入')
           } else {
