@@ -6,6 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_SRC = '/Users/cbj/Documents/code/bili-core/data';
 const UP_LIST = '/Users/cbj/Documents/code/bili-core/xzzy-up-list.txt';
 const DATA_OUT = path.join(__dirname, '..', 'public', 'data', 'bilibili-merged.json');
+const FILTER_KEYWORD = '徐郑子滢';
 
 const INCLUDE = fs.readFileSync(UP_LIST, 'utf-8')
   .split('\n')
@@ -87,8 +88,9 @@ for (const upDir of upDirs) {
     let filteredCount = 0;
     for (const [bvid, video] of entries) {
       const title = video.title || '';
-      // 过滤：标题必须包含"徐郑子滢"
-      if (!title.includes('徐郑子滢')) continue;
+      const description = video.description || '';
+      // 过滤：标题或简介任一包含关键词即可保留
+      if (!title.includes(FILTER_KEYWORD) && !description.includes(FILTER_KEYWORD)) continue;
 
       filteredCount++;
       allVideos.push({
@@ -96,7 +98,7 @@ for (const upDir of upDirs) {
         aid: video.aid,
         title,
         cover: video.cover || '',
-        description: video.description || '',
+        description,
         duration: video.duration || 0,
         created: video.created || 0,
         tid: video.tid || 0,
