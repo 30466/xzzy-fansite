@@ -18,6 +18,27 @@ const FONT_URLS = [
 const FONT_DOWNLOAD_TIMEOUT_MS = 25000
 
 const DANMAKU_COLOR = 'white'
+export const DANMAKU_VIDEO_CRF = '23'
+
+export function resolveDanmakuMaxCount(value) {
+  if (value === 'all' || value === undefined || value === null || value === '') return Infinity
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : Infinity
+}
+
+export function getDanmakuLimitLabel(value) {
+  return resolveDanmakuMaxCount(value) === Infinity ? '全部' : `${Number(value)} 条`
+}
+
+export function getDanmakuPresetLabel(value) {
+  return value === 'superfast' ? '时间慢文件小 (superfast)' : '时间快文件大 (ultrafast)'
+}
+
+export function formatDanmakuStats(result) {
+  const carryIn = result.relevantCount > result.inRangeCount ? `，开头延续 ${result.relevantCount - result.inRangeCount} 条` : ''
+  const truncated = result.truncatedCount > 0 ? `，已截断 ${result.truncatedCount} 条` : ''
+  return `💬 弹幕统计：文件总数 ${result.sourceCount} 条，片段内 ${result.inRangeCount} 条，实际嵌入 ${result.count} 条${carryIn}${truncated}`
+}
 
 // ── 字体缓存 ──
 let _fontBuffer = null
@@ -103,7 +124,8 @@ function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {})
   const { videoWidth = 1280, videoHeight = 720, 
           fontSize = Math.floor(videoHeight / 25), // 动态字号
           duration = 12, // 默认 12s 划过全屏
-          maxCount = 100 } = options
+          maxCount = Infinity,
+          textFilePrefix = 'dm' } = options
 
   // 速度 = (屏幕宽度 + 预估最大弹幕宽度) / 期望时长
   const scrollSpeed = Math.round((videoWidth + 800) / duration)
@@ -111,12 +133,27 @@ function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {})
   const maxTextWidthEst = 800
   const maxScrollTime = (videoWidth + maxTextWidthEst + 40) / scrollSpeed
 
+  const inRangeCount = danmakuList.filter(dm =>
+    dm.time >= clipStartSec && dm.time <= clipEndSec
+  ).length
+
   const relevant = danmakuList.filter(dm =>
     dm.time >= clipStartSec - maxScrollTime && dm.time <= clipEndSec
   )
-  if (relevant.length === 0) return null
+  if (relevant.length === 0) {
+    return {
+      chain: '',
+      textFiles: [],
+      sourceCount: danmakuList.length,
+      inRangeCount,
+      relevantCount: 0,
+      selectedCount: 0,
+      truncatedCount: 0
+    }
+  }
 
-  const selected = relevant.slice(0, maxCount)
+  const limit = resolveDanmakuMaxCount(maxCount)
+  const selected = limit === Infinity ? relevant : relevant.slice(0, limit)
   const rowHeight = fontSize + 10
   const rows = Math.max(1, Math.floor((videoHeight - 20) / rowHeight))
   const laneBusyUntil = new Array(rows).fill(0)
@@ -145,7 +182,7 @@ function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {})
     const actualEnd = actualStart + itemDuration
     laneBusyUntil[row] = actualEnd + 0.1
 
-    const fn = `dm_${i}.txt`
+    const fn = `${textFilePrefix}_${i}.txt`
     textFiles.push({ filename: fn, content: rawText })
 
     const xExpr = `w-(t-${actualStart})*${scrollSpeed}`
@@ -159,8 +196,15 @@ function buildDrawtextChain(danmakuList, clipStartSec, clipEndSec, options = {})
     )
   }
 
-  if (parts.length === 0) return null
-  return { chain: parts.join(','), textFiles }
+  return {
+    chain: parts.join(','),
+    textFiles,
+    sourceCount: danmakuList.length,
+    inRangeCount,
+    relevantCount: relevant.length,
+    selectedCount: selected.length,
+    truncatedCount: Math.max(0, relevant.length - selected.length)
+  }
 }
 
 export function useDanmakuEmbed() {
@@ -186,9 +230,14 @@ export function useDanmakuEmbed() {
       throw new Error(`生成弹幕滤镜链失败: ${e?.message || String(e)}`)
     }
 
-    if (!result) {
+    if (!result || result.textFiles.length === 0) {
       return { filterArgs: [], videoCodecArgs: [], audioCodecArgs: [],
-               cleanup: async () => {}, count: 0, empty: true }
+               cleanup: async () => {}, count: 0, empty: true,
+               sourceCount: result?.sourceCount ?? danmakuList.length,
+               inRangeCount: result?.inRangeCount ?? 0,
+               relevantCount: result?.relevantCount ?? 0,
+               selectedCount: result?.selectedCount ?? 0,
+               truncatedCount: result?.truncatedCount ?? 0 }
     }
 
     // 将弹幕文本文件写入 VFS
@@ -197,7 +246,8 @@ export function useDanmakuEmbed() {
     }
 
     const filterArgs = ['-vf', result.chain]
-    const videoCodecArgs = ['-c:v', 'libx264', '-preset', 'superfast', '-crf', '23']
+    const preset = options.preset === 'superfast' ? 'superfast' : 'ultrafast'
+    const videoCodecArgs = ['-c:v', 'libx264', '-preset', preset, '-crf', DANMAKU_VIDEO_CRF]
     const audioCodecArgs = ['-c:a', 'aac']
 
     const cleanup = async () => {
@@ -207,7 +257,14 @@ export function useDanmakuEmbed() {
     }
 
     return { filterArgs, videoCodecArgs, audioCodecArgs, cleanup,
-             count: result.textFiles.length }
+             count: result.textFiles.length,
+             sourceCount: result.sourceCount,
+             inRangeCount: result.inRangeCount,
+             relevantCount: result.relevantCount,
+             selectedCount: result.selectedCount,
+             truncatedCount: result.truncatedCount,
+             preset,
+             crf: DANMAKU_VIDEO_CRF }
   }
 
   return { prepareDanmaku }

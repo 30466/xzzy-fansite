@@ -230,7 +230,13 @@
           <el-input-number v-model="clipConcurrency" :min="5" :max="30" :step="5" size="large" style="width: 120px" />
           <span class="tip" style="font-size: 12px; color: #909399; margin-left: 8px">同时下载分片数</span>
         </div>
-        <DanmakuToggle v-model="embedDanmaku" v-model:duration="danmakuDuration" :disabled="clipOutputCategory === 'audio'" />
+        <DanmakuToggle
+          v-model="embedDanmaku"
+          v-model:duration="danmakuDuration"
+          v-model:max-count="danmakuMaxCount"
+          v-model:preset="danmakuPreset"
+          :disabled="clipOutputCategory === 'audio'"
+        />
       </div>
       <el-divider />
       <div class="log-box" ref="clipLogRef">
@@ -268,7 +274,13 @@ import { Scissor } from '@element-plus/icons-vue';
 import { Search } from '@element-plus/icons-vue';
 import * as p48 from '@/api/pocket48';
 import { FFmpegManager } from '@/composables/useFFmpeg';
-import { useDanmakuEmbed } from '@/composables/useDanmakuEmbed';
+import {
+  useDanmakuEmbed,
+  DANMAKU_VIDEO_CRF,
+  formatDanmakuStats,
+  getDanmakuLimitLabel,
+  getDanmakuPresetLabel
+} from '@/composables/useDanmakuEmbed';
 import DanmakuToggle from '@/components/DanmakuToggle.vue';
 import audioPlayer from '@/composables/useAudioPlayer';
 import SongSearchResults from '@/components/SongSearchResults.vue';
@@ -298,6 +310,8 @@ const clipConcurrency = ref(10);
 const clipAbortController = ref(null);
 const embedDanmaku = ref(false);
 const danmakuDuration = ref(12);
+const danmakuMaxCount = ref('all');
+const danmakuPreset = ref('ultrafast');
 const { prepareDanmaku: prepareDanmakuEmbed } = useDanmakuEmbed();
 
 watch(embedDanmaku, (on) => {
@@ -706,6 +720,19 @@ const handleClipSong = async () => {
 
     const startSec = p48.timeToSeconds(item.startTime);
     const endSec = p48.timeToSeconds(item.endTime);
+    const format = clipTargetFormat.value;
+    const isAudio = ['mp3', 'm4a', 'flac', 'wav', 'aac', 'opus', 'ogg'].includes(format);
+
+    addClipLog('⚙️ 导出设置：')
+    addClipLog(`  格式：${format.toUpperCase()}`)
+    addClipLog(`  下载并发：${clipConcurrency.value}`)
+    addClipLog(`  嵌入弹幕：${embedDanmaku.value && clipOutputCategory.value === 'video' && !isAudio ? '开启' : '关闭'}`)
+    if (embedDanmaku.value && clipOutputCategory.value === 'video' && !isAudio) {
+      addClipLog(`  弹幕滚动时长：${danmakuDuration.value}s`)
+      addClipLog(`  弹幕数量：${getDanmakuLimitLabel(danmakuMaxCount.value)}`)
+      addClipLog(`  编码速度：${getDanmakuPresetLabel(danmakuPreset.value)}`)
+      addClipLog(`  视频质量：crf=${DANMAKU_VIDEO_CRF}`)
+    }
 
     // ── 弹幕嵌入：获取 LRC + 生成 drawtext 滤镜链 ──
     let danmakuCleanup = null
@@ -725,7 +752,11 @@ const handleClipSong = async () => {
           const lrcText = await resp.text()
           const result = await prepareDanmakuEmbed(ffmpegMgr.ffmpeg, lrcText, {}, addClipLog, 
             { startSec, endSec },
-            { duration: danmakuDuration.value }
+            {
+              duration: danmakuDuration.value,
+              maxCount: danmakuMaxCount.value,
+              preset: danmakuPreset.value
+            }
           )
           if (result.empty) {
             addClipLog('⚠️ 该片段内没有弹幕，跳过嵌入')
@@ -734,7 +765,8 @@ const handleClipSong = async () => {
             danmakuVideoArgs = result.videoCodecArgs
             danmakuAudioArgs = result.audioCodecArgs
             danmakuCleanup = result.cleanup
-            addClipLog(`✅ 弹幕嵌入已就绪`)
+            addClipLog(formatDanmakuStats(result))
+            addClipLog(`✅ 弹幕嵌入已就绪 (${getDanmakuPresetLabel(result.preset)}, crf=${result.crf})`)
           }
         } catch (e) {
           console.error('Danmaku error:', e)
@@ -864,8 +896,6 @@ const handleClipSong = async () => {
 
     await ffmpegMgr.ffmpeg.writeFile('concat.ts', concatData);
 
-    const format = clipTargetFormat.value;
-    const isAudio = ['mp3', 'm4a', 'flac', 'wav', 'aac', 'opus', 'ogg'].includes(format);
     const outExt = '.' + format;
     const outputName = 'output' + outExt;
     const clipOffset = startSec - firstSegStart;
