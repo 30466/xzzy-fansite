@@ -9,11 +9,13 @@ import { parseLRC } from '@/utils/danmaku'
 // ── 中文字体 CDN（国内镜像优先）──
 const FONT_URLS = [
   // Noto Sans CJK SC — 标准无衬线字体，类似微软雅黑 / 苹方
+  'https://cdn.jsdmirror.com/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf',
   'https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf',
   'https://fastly.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf',
-  // ZCOOL 备用
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/zcoolqingkehuangyou/ZCOOLQingKeHuangYou-Regular.ttf'
+  'https://jsd.onmicrosoft.cn/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf'
 ]
+
+const FONT_DOWNLOAD_TIMEOUT_MS = 25000
 
 const DANMAKU_COLOR = 'white'
 
@@ -34,20 +36,23 @@ async function downloadFont(onLog) {
     try {
       if (onLog) onLog(`  🔤 下载字体 (${url.split('/').pop()})...`)
       const ctrl = new AbortController()
-      const timer = setTimeout(() => ctrl.abort(), 15000)
+      const timer = setTimeout(() => ctrl.abort(), FONT_DOWNLOAD_TIMEOUT_MS)
       let resp
       try {
         resp = await fetch(url, { signal: ctrl.signal })
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        _fontBuffer = await resp.arrayBuffer()
       } finally {
         clearTimeout(timer)
       }
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-      _fontBuffer = await resp.arrayBuffer()
       if (onLog) onLog(`  ✅ 字体就绪 (${(_fontBuffer.byteLength / 1024 / 1024).toFixed(1)} MB)`)
       _fontLoading = false
       return _fontBuffer
     } catch (e) {
-      if (onLog) onLog(`  ⚠️ ${url.split('/').pop()}: ${e.message}`)
+      const message = e?.name === 'AbortError'
+        ? `下载超时 (${Math.round(FONT_DOWNLOAD_TIMEOUT_MS / 1000)}s)`
+        : e.message
+      if (onLog) onLog(`  ⚠️ ${url.split('/').pop()}: ${message}`)
     }
   }
   _fontError = new Error('所有字体源下载失败')
