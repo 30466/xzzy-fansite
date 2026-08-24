@@ -900,7 +900,7 @@ const handleClipSong = async () => {
     const outputName = 'output' + outExt;
     const clipOffset = startSec - firstSegStart;
     const clipDuration = endSec - startSec;
-    const baseCmd = ['-ss', String(clipOffset), '-i', 'concat.ts', '-to', String(clipOffset + clipDuration)];
+    const baseCmd = ['-ss', String(clipOffset), '-i', 'concat.ts', '-t', String(clipDuration)];
 
     addClipLog(`✂️ 剪切: ${item.cleanName} -> ${format.toUpperCase()}`);
     const copyable = ['ts', 'mp4', 'mkv', 'avi', 'mov', 'webm', 'm4a'];
