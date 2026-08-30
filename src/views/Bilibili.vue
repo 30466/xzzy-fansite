@@ -2,7 +2,6 @@
   <div class="bilibili-page">
     <!-- 顶部统计 -->
     <div class="page-header">
-      <h1 class="page-title">🎬 B站安利 · 徐郑子滢</h1>
       <p class="page-stats">
         共 <b>{{ allVideos.length }}</b> 个视频 · 来自 <b>{{ upList.length }}</b> 位UP主
         <span v-if="activeUp"> · 当前UP主: <b>{{ activeUp }}</b> ({{ upFilteredCount }}个视频)</span>
@@ -208,7 +207,7 @@ const sortAsc = ref(false)      // 默认降序
 
 // ── 快速检索标签 ──
 const quickTags = [
-  'focus', '直拍','舞台','直播', '唱歌','minilive',
+  'focus', '直拍','舞台','直播', '唱歌','口袋','minilive',
   'cut', '合集',  
 ]
 
@@ -511,7 +510,12 @@ function openVideo(video) {
   max-width: 400px;
 }
 .search-mode {
+  display: inline-flex;
+  flex-wrap: nowrap;
   flex-shrink: 0;
+}
+:deep(.search-mode .el-radio-button__inner) {
+  white-space: nowrap;
 }
 .sort-area {
   display: flex;

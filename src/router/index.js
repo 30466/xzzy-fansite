@@ -30,9 +30,13 @@ const router = createRouter({
       component: () => import('../views/Upload.vue')
     },
     {
+      path: '/recommend',
+      name: 'recommend',
+      component: () => import('../views/Recommend.vue')
+    },
+    {
       path: '/bilibili',
-      name: 'bilibili',
-      component: () => import('../views/Bilibili.vue')
+      redirect: '/recommend'
     },
     {
       path: '/videoclip',

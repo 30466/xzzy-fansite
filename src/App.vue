@@ -55,8 +55,8 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            <!-- B站安利 -->
-            <router-link to="/bilibili">B站安利</router-link>
+            <!-- B站 / 微博安利 -->
+            <router-link to="/recommend">安利</router-link>
 
             <!-- 简介 -->
             <router-link to="/profile">简介</router-link>

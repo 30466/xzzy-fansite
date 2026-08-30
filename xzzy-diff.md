@@ -13,11 +13,12 @@
 | `src/assets/bg.jpg` | xzzy 自己的背景图 |
 | `public/icon-192.png` | 由 `scripts/generate-icons.py` 从 bg.jpg 生成 |
 | `public/icon-512.png` | 同上 |
+| `screenshots/` | xzzy 页面截图，更新时应从 xzzy 本地页面重新截取，不要从 tsh 复制覆盖 |
 | `public/data/songs.json` | 由 `node scripts/gen-data.js` 从 `scripts/txt_source/` 生成 |
-| `public/data/videoclips.json` | 视频切片数据，tsh 专属 |
+| `public/data/videoclips.json` | 视频切片数据，xzzy 专属 |
 | `public/data/bilibili-merged.json` | 由 `node scripts/merge-bilibili.js` 生成 |
 | `scripts/txt_source/` | 唱歌切片源数据 |
-| `scripts/merge-bilibili.js` | 读取 `xzzy-up-list.txt`，过滤 `吴睿莎` |
+| `scripts/merge-bilibili.js` | 读取 `xzzy-up-list.txt`，过滤 `徐郑子滢` |
 
 ---
 
@@ -27,7 +28,7 @@
 # 所有源文件：谭思慧 → 徐郑子滢，CGT48 → GNZ48
 sed -i 's/谭思慧/徐郑子滢/g' src/App.vue src/views/*.vue src/components/*.vue src/composables/*.js src/utils/*.js src/api/*.js src/router/index.js src/main.js index.html vite.config.js
 
-
+```
 
 ## 2. 文件级差异
 
