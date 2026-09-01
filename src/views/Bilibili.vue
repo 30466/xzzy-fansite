@@ -4,6 +4,7 @@
     <div class="page-header">
       <p class="page-stats">
         共 <b>{{ allVideos.length }}</b> 个视频 · 来自 <b>{{ upList.length }}</b> 位UP主
+        <span v-if="collectionCount"> · <b>{{ collectionCount }}</b> 个合集</span>
         <span v-if="activeUp"> · 当前UP主: <b>{{ activeUp }}</b> ({{ upFilteredCount }}个视频)</span>
       </p>
     </div>
@@ -33,7 +34,7 @@
         <div class="search-area">
           <el-input
             v-model="searchText"
-            placeholder="搜索视频标题、简介、分P标题..."
+            placeholder="搜索视频标题、合集、简介、分P标题..."
             size="large"
             clearable
             :prefix-icon="Search"
@@ -130,6 +131,14 @@
             <span v-html="highlightMatches(video.title)"></span>
           </h3>
 
+          <div v-if="video.collection" class="collection-info" :title="`合集：${video.collection.title}`">
+            <el-icon><FolderOpened /></el-icon>
+            <span>
+              合集：{{ video.collection.title }}
+              <span v-if="video.collection.index"> · {{ video.collection.index }}/{{ video.collection.total }}</span>
+            </span>
+          </div>
+
           <div class="video-meta">
             <span class="up-name">{{ video.upName }}</span>
             <span class="video-stat">
@@ -189,14 +198,16 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import {
   Search, Connection, Menu, SortUp, SortDown,
-  VideoPlay, VideoCamera, Tickets
+  VideoPlay, VideoCamera, Tickets, FolderOpened
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 // ── 数据 ──
 const allVideos = ref([])
 const upList = ref([])
+const collections = ref({})
 const loading = ref(true)
+const collectionCount = computed(() => Object.keys(collections.value).length)
 
 // ── 搜索 & 筛选状态 ──
 const searchText = ref('')
@@ -208,7 +219,7 @@ const sortAsc = ref(false)      // 默认降序
 // ── 快速检索标签 ──
 const quickTags = [
   'focus', '直拍','舞台','直播', '唱歌','口袋','minilive',
-  'cut', '合集',  
+  '公演', 'cut', '合集',
 ]
 
 // ── 分页 ──
@@ -236,7 +247,28 @@ onMounted(async () => {
   try {
     const res = await fetch('/data/bilibili-merged.json')
     const data = await res.json()
-    allVideos.value = data.videos || []
+    collections.value = data.collections || {}
+    const collectionRefs = new Map()
+    Object.values(collections.value).forEach(collection => {
+      let index = 0
+      for (const section of collection.sections || []) {
+        for (const episode of section.episodes || []) {
+          index += 1
+          if (episode.bvid) {
+            collectionRefs.set(episode.bvid, {
+              id: collection.id,
+              title: collection.title || '',
+              index,
+              total: collection.episodeCount || 0,
+            })
+          }
+        }
+      }
+    })
+    allVideos.value = (data.videos || []).map(video => ({
+      ...video,
+      collection: video.collection || collectionRefs.get(video.bvid),
+    }))
     upList.value = data.upList || []
   } catch (e) {
     console.error('加载视频数据失败:', e)
@@ -291,6 +323,8 @@ const filteredVideos = computed(() => {
       if (match(v.title, query)) return true
       // 简介匹配
       if (match(v.description || '', query)) return true
+      // 合集名称匹配
+      if (match(v.collection?.title || '', query)) return true
       // 分P标题匹配
       if (v.pages && v.pages.some(p => match(p.part || '', query))) return true
       return false
@@ -669,6 +703,21 @@ function openVideo(video) {
   font-size: 12px;
   color: #909399;
   margin-bottom: 6px;
+}
+.collection-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: -2px 0 6px;
+  color: #409EFF;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.collection-info > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .up-name {
   color: #409EFF;

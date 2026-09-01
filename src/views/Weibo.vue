@@ -26,7 +26,7 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <div class="search-area">
-          <el-input v-model="searchText" placeholder="搜索微博正文、转发原文、用户..." size="large" clearable
+          <el-input v-model="searchText" placeholder="搜索微博正文、用户..." size="large" clearable
             :prefix-icon="Search" class="search-input" />
           <el-radio-group v-model="searchMode" size="default" class="search-mode">
             <el-radio-button label="exact"><el-icon><Connection /></el-icon> 精确</el-radio-button>
@@ -113,7 +113,10 @@ const sortField = ref('created')
 const sortAsc = ref(false)
 const currentPage = ref(1)
 const pageSize = 24
-const quickTags = ['返图', '直拍', 'focus', 'fo', '搬运', '抖音', '小红书', '微博视频', '口袋', '公演', '舞台', '直播', '路演', '拍立得', '生日', 'MVP', '男装', '唱歌']
+const quickTags = [
+  'focus', '直拍', '舞台', '直播', '唱歌', '口袋', 'minilive',
+  '公演', 'cut', '合集',
+]
 
 const normalizedAccounts = computed(() => accountList.value.map(account => ({
   ...account,
