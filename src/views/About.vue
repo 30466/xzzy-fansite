@@ -21,10 +21,17 @@
       <p>通过固定UP主与关键词筛选，可以减少无关或不可控内容。页面保留视频标题、简介、封面、分P及播放互动数据，支持精确或模糊检索。</p>
 
       <h4>🔴 微博安利</h4>
-      <p>微博部分同样来自固定账号，包括徐郑子滢本人以及粉丝产出和资料账号。「GNZ48-徐郑子滢」与「爱吃抹茶味的贝果酱」的微博全部保留，其他账号仅展示正文或转发原文中含有「徐郑子滢超话」的内容。</p>
+      <p>微博部分同样来自固定账号，包括徐郑子滢本人以及粉丝产出和资料账号。「GNZ48-徐郑子滢」与「爱吃抹茶味的贝果酱」的微博全部保留，其他账号仅展示正文中含有「徐郑子滢超话」的原创微博，转发帖在合并时排除。</p>
       <p>页面保留微博正文、转发内容、发布时间、来源、地区、媒体数量以及点赞、评论和转发数据，并提供适合微博内容的返图、直拍、搬运和其他平台动态等快速检索词。</p>
 
       <p>B站UP主和微博账号列表会不定时爬取更新。如果你知道有优质产出账号尚未收录，欢迎联系我补充。</p>
+
+      <h3>🔗 项目源代码与数据来源</h3>
+      <p class="project-links">
+        <a href="https://github.com/30466/xzzy-fansite" target="_blank" rel="noopener noreferrer">本站源代码</a>
+        <a href="https://github.com/30466/bili-core" target="_blank" rel="noopener noreferrer">B站爬虫项目 bili-core</a>
+        <a href="https://github.com/30466/weibo-core" target="_blank" rel="noopener noreferrer">微博爬虫项目 weibo-core</a>
+      </p>
 
       <el-divider />
       
@@ -100,6 +107,7 @@ const showQrCode = (type) => {
   line-height: 1.8;
 }
 a { color: #409EFF; text-decoration: none; }
+.project-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 
 :deep(.el-dialog__header) {
   text-align: center;

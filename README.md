@@ -9,7 +9,7 @@
   </a>
 </p>
 
-这是为 **GNZ48 成员徐郑子滢** 建立的个人应援存档站，集中整理直播唱歌切片、非唱歌类视频切片、口袋48录播、B站与微博安利内容以及成员资料。
+这是为 **GNZ48 成员徐郑子滢** 建立的个人应援存档站，集中整理直播唱歌切片、非唱歌类视频切片、口袋48录播、B站与微博安利内容以及成员资料。本项目以 [tsh-fansite](https://github.com/30466/tsh-fansite) 为基础，根据成员信息、数据源、筛选规则、样式和页面内容进行小范围适配。
 
 网站同时支持 PWA，可通过兼容浏览器安装到手机主屏幕或电脑桌面。
 
@@ -135,6 +135,13 @@ src/
 │   └── About.vue           # 关于本站
 ├── App.vue                 # 全局导航、播放器和浮动入口
 └── router/index.js         # 页面路由
+
+scripts/
+├── gen-data.js             # 根据本地切片源数据生成前端 JSON
+├── merge-bilibili.js       # 合并 bili-core 抓取的 B 站数据
+├── merge-weibo.js          # 合并 weibo-core 抓取的微博数据
+├── generate-icons.py       # 根据背景图生成 PWA 图标
+└── txt_source/             # 唱歌切片源数据（本地维护）
 ```
 
 ## 数据
@@ -148,7 +155,14 @@ src/
 | `bilibili-merged.json` | 合并并筛选后的B站视频 |
 | `weibo-merged.json` | 合并并筛选后的微博 |
 
-这些运行数据及本地合并脚本不提交到 Git。`scripts/merge-bilibili.js` 和 `scripts/merge-weibo.js` 分别从本地爬虫项目读取结果并生成前端 JSON。
+抓取原始数据和生成后的 JSON 不提交到 Git；`scripts/merge-bilibili.js` 和 `scripts/merge-weibo.js` 是本项目用于合并爬虫项目数据的脚本，已纳入 Git，分别从本地 core 项目读取抓取结果并生成前端 JSON。脚本中的 `bili-core`、`weibo-core` 路径是维护者本机路径，其他使用者需要按自己的目录结构修改。
+
+### 数据来源与开源协议
+
+- [bili-core](https://github.com/30466/bili-core)：负责 B 站视频列表、视频详情、分 P 和合集元数据的抓取与导出。
+- [weibo-core](https://github.com/30466/weibo-core)：负责微博账号帖子、正文详情和媒体元数据的抓取与导出。
+
+如果使用、修改、分发这两个项目的代码或上述抓取、导出功能，需要分别遵循它们的 **GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later）**，保留版权、许可证和来源说明，并按许可证要求提供相应源码。完整条款请分别查看两个项目仓库中的 `LICENSE` 文件。
 
 其他动态数据来自：
 
@@ -178,7 +192,7 @@ npm run sync-bili
 npm run sync-weibo
 ```
 
-> `sync-bili` 和 `sync-weibo` 依赖未提交到 Git 的本地脚本及对应爬虫数据目录，仅供维护环境使用。
+> `sync-bili` 和 `sync-weibo` 使用仓库中的合并脚本，并依赖本地 `bili-core`、`weibo-core` 的抓取数据目录；首次使用前请按上文说明修改脚本中的本机路径。生成的 `public/data/` 仍属于本地运行数据，不提交到 Git。
 
 开发服务器代理：
 
@@ -242,6 +256,8 @@ npm run sync-weibo
 ## 相关项目
 
 - [本项目源代码](https://github.com/30466/xzzy-fansite)
+- [Bilibili 抓取与导出工具 bili-core](https://github.com/30466/bili-core)
+- [微博抓取与导出工具 weibo-core](https://github.com/30466/weibo-core)
 - [徐郑子滢应援存档站](https://xzzy.abm48.com/)
 - [小偶像音乐网站](https://abm48.com/)
 - [个人工具站](https://tools.abm48.com/)

@@ -56,8 +56,6 @@ junit.xml
 public/data.json
 data.json
 public/data/
-scripts/merge-bilibili.js
-scripts/merge-weibo.js
 
 # User-uploaded clip data
 scripts/txt_source/*.txt
