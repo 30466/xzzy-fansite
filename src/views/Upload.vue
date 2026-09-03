@@ -170,7 +170,6 @@ import { ref, onMounted } from 'vue';
 import { FolderAdd, UploadFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import ReplayPicker from '@/components/ReplayPicker.vue';
-import { formatBeijingDateTime, getArchiveDate } from '@/utils/time';
 
 onMounted(() => {
   document.title = '徐郑子滢 ✽ 上传';
@@ -274,27 +273,15 @@ const submitVideoClip = async () => {
   clipSubmitting.value = true;
   clipLogs.value = ['🚀 正在提交视频切片...'];
 
-  // 格式化录播时间
-  const fmtReplayTime = (ms) => {
-    return formatBeijingDateTime(ms);
-  };
-
-  // 获取录播归档日期（6点规则）
-  const getReplayDate = (ms) => {
-    return getArchiveDate(ms);
-  };
-
   const formData = new FormData();
   formData.append('type', 'videoclip');
   formData.append('password', password.value);
   formData.append('name', form.name);
   formData.append('startTime', form.startTime);
   formData.append('endTime', form.endTime);
-  formData.append('broadcastTime', fmtReplayTime(form.replay.ctime));
   formData.append('replayTitle', form.replay.title || '');
   formData.append('liveId', String(form.replay.liveId));
   formData.append('replayCtime', String(form.replay.ctime));
-  formData.append('replayDate', getReplayDate(form.replay.ctime));
 
   try {
     const res = await fetch(UPLOAD_URL, {

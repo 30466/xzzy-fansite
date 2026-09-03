@@ -284,7 +284,7 @@ import {
 import DanmakuToggle from '@/components/DanmakuToggle.vue';
 import audioPlayer from '@/composables/useAudioPlayer';
 import SongSearchResults from '@/components/SongSearchResults.vue';
-import { formatBeijingDate, formatBeijingDateTime, getBeijingParts } from '@/utils/time';
+import { formatBeijingDate, getBeijingParts } from '@/utils/time';
 	const searchVisible = ref(false);
 	const searchQuery = ref('');
 
@@ -665,14 +665,13 @@ const downloadBlob = (data, filename) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-const findReplayByTime = async (pocketId, targetTime) => {
+const findReplayByCtime = async (pocketId, targetCtime) => {
   let next = '0';
   while (next) {
     const data = await p48.getLiveList(Number(pocketId), next);
     if (data?.content?.liveList?.length) {
       for (const r of data.content.liveList) {
-        const timeStr = formatBeijingDateTime(r.ctime);
-        if (timeStr === targetTime) return r;
+        if (Math.abs(Number(r.ctime) - Number(targetCtime)) < 1000) return r;
       }
       next = data.content.next;
     } else break;
@@ -704,8 +703,9 @@ const handleClipSong = async () => {
     const pocketId = roomMap['徐郑子滢'];
     if (!pocketId) throw new Error('未找到徐郑子滢的口袋房间号');
 
-    addClipLog(`🔍 查找 ${item.broadcastTime} 的录播...`);
-    const replay = await findReplayByTime(pocketId, item.broadcastTime);
+    if (!Number.isFinite(Number(item.replayCtime)) || Number(item.replayCtime) <= 0) throw new Error('唱歌切片数据格式无效：缺少 replayCtime');
+    addClipLog(`🔍 按绝对时间查找 ${item.broadcastTime} 的录播...`);
+    const replay = await findReplayByCtime(pocketId, item.replayCtime);
     if (!replay) throw new Error('未找到匹配的录播，请确认直播时间正确');
     addClipLog(`✅ 找到录播: ${replay.title || '(无标题)'}`);
 

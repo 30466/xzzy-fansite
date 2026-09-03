@@ -32,13 +32,14 @@ function cleanSongName($name) {
 // 从文件名解析日期（6点规则）
 function parseDateFromFilename($filename) {
     if (!preg_match('/(\d{4}-\d{2}-\d{2})~(\d{2})\.(\d{2})\.(\d{2})/', $filename, $m)) {
-        return ['date' => null, 'broadcastTime' => null];
+        return ['date' => null, 'broadcastTime' => null, 'replayCtime' => null];
     }
     $broadcastTime = "{$m[1]} {$m[2]}:{$m[3]}:{$m[4]}";
     $date = archiveDateFromBeijingDateTime($broadcastTime);
     return [
         'date' => $date,
-        'broadcastTime' => $broadcastTime
+        'broadcastTime' => $broadcastTime,
+        'replayCtime' => unixMsFromBeijingDateTime($broadcastTime)
     ];
 }
 
@@ -66,6 +67,7 @@ function regenerateSongsJson($sourceDir, $outputFile) {
                 'endTime' => trim($m[3]),
                 'date' => $dateInfo['date'],
                 'broadcastTime' => $dateInfo['broadcastTime'],
+                'replayCtime' => $dateInfo['replayCtime'],
                 'filename' => $filename,
                 'fullContent' => $content
             ];
@@ -114,7 +116,6 @@ if (isset($_POST['type']) && $_POST['type'] === 'videoclip') {
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
     $startTime = isset($_POST['startTime']) ? trim($_POST['startTime']) : '';
     $endTime = isset($_POST['endTime']) ? trim($_POST['endTime']) : '';
-    $postedBroadcastTime = isset($_POST['broadcastTime']) ? trim($_POST['broadcastTime']) : '';
     $replayTitle = isset($_POST['replayTitle']) ? trim($_POST['replayTitle']) : '';
     $liveId = isset($_POST['liveId']) ? trim($_POST['liveId']) : '';
     $replayCtime = isset($_POST['replayCtime']) ? trim($_POST['replayCtime']) : '';
@@ -122,8 +123,11 @@ if (isset($_POST['type']) && $_POST['type'] === 'videoclip') {
     if (empty($name)) { $response['logs'][] = '❌ 切片名称不能为空'; echo json_encode($response); exit; }
     if (empty($startTime) || empty($endTime)) { $response['logs'][] = '❌ 开始时间和结束时间不能为空'; echo json_encode($response); exit; }
     if (empty($liveId)) { $response['logs'][] = '❌ 请选择录播'; echo json_encode($response); exit; }
-    $replayDateTime = $replayCtime !== '' ? beijingDateTimeFromUnixMs($replayCtime) : parseBeijingDateTime($postedBroadcastTime);
-    $replayDate = $replayCtime !== '' ? archiveDateFromUnixMs($replayCtime) : archiveDateFromBeijingDateTime($postedBroadcastTime);
+    if (!preg_match('/^\d+$/', $liveId)) { $response['logs'][] = '❌ 录播 ID 无效'; echo json_encode($response); exit; }
+    if (!preg_match('/^\d+$/', $replayCtime)) { $response['logs'][] = '❌ 缺少有效的录播绝对时间 replayCtime'; echo json_encode($response); exit; }
+    $replayCtime = (int) $replayCtime;
+    $replayDateTime = beijingDateTimeFromUnixMs($replayCtime);
+    $replayDate = archiveDateFromUnixMs($replayCtime);
     if ($replayDateTime === null || $replayDate === null) { $response['logs'][] = '❌ 录播开播时间无效'; echo json_encode($response); exit; }
     $broadcastTime = $replayDateTime->format('Y-m-d H:i:s');
 
@@ -133,7 +137,15 @@ if (isset($_POST['type']) && $_POST['type'] === 'videoclip') {
     $allClips = [];
     if (file_exists($VIDEOCLIP_FILE)) {
         $existing = json_decode(file_get_contents($VIDEOCLIP_FILE), true);
-        if ($existing && isset($existing['clips'])) $allClips = $existing['clips'];
+        if (!is_array($existing) || !isset($existing['clips']) || !is_array($existing['clips'])) {
+            $response['logs'][] = '❌ 视频切片数据格式无效，已拒绝覆盖'; echo json_encode($response); exit;
+        }
+        foreach ($existing['clips'] as $clip) {
+            if (!isset($clip['replayCtime']) || !is_int($clip['replayCtime']) || $clip['replayCtime'] <= 0 || empty($clip['liveId'])) {
+                $response['logs'][] = '❌ 视频切片数据尚未转换为新格式'; echo json_encode($response); exit;
+            }
+        }
+        $allClips = $existing['clips'];
     }
 
     $newClip = [
@@ -144,7 +156,7 @@ if (isset($_POST['type']) && $_POST['type'] === 'videoclip') {
         'broadcastTime' => $broadcastTime,
         'replayTitle' => $replayTitle,
         'liveId' => $liveId,
-        'replayCtime' => $replayCtime !== '' ? $replayCtime : null,
+        'replayCtime' => $replayCtime,
         'replayDate' => $replayDate,
         'createdAt' => utcNowIso()
     ];

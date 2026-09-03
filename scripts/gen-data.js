@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getArchiveDateFromBeijingDateTime } from '../src/utils/time.js';
+import { getArchiveDateFromBeijingDateTime, unixMsFromBeijingDateTime } from '../src/utils/time.js';
 
 // 获取路径上下文
 const __filename = fileURLToPath(import.meta.url);
@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 // 配置路径
 const SOURCE_DIR = path.join(__dirname, 'txt_source');
-const OUTPUT_FILE = path.join(__dirname, '../data.json');
+const OUTPUT_FILE = path.join(__dirname, '../public/data/songs.json');
 
 function cleanSongName(name) {
   // 逻辑：
@@ -30,15 +30,15 @@ function parseDateFromFilename(filename) {
   try {
     // 提取时间部分: 2025-11-23~00.06.21
     const match = filename.match(/(\d{4}-\d{2}-\d{2})~(\d{2})\.(\d{2})\.(\d{2})/);
-    if (!match) return { date: null, broadcastTime: null };
+    if (!match) return { date: null, broadcastTime: null, replayCtime: null };
 
     const [_, dateStr, hourStr, minuteStr, secondStr] = match;
     const broadcastTime = `${dateStr} ${hourStr}:${minuteStr}:${secondStr}`;
     const date = getArchiveDateFromBeijingDateTime(broadcastTime);
-    return { date, broadcastTime };
+    return { date, broadcastTime, replayCtime: unixMsFromBeijingDateTime(broadcastTime) };
   } catch (e) {
     console.error(`解析日期失败: ${filename}`, e);
-    return { date: '未知日期', broadcastTime: null };
+    return { date: null, broadcastTime: null, replayCtime: null };
   }
 }
 
@@ -57,7 +57,8 @@ async function generateData() {
   for (const file of files) {
     const filePath = path.join(SOURCE_DIR, file);
     const content = fs.readFileSync(filePath, 'utf-8');
-    const { date: broadcastDate, broadcastTime } = parseDateFromFilename(file);
+    const { date: broadcastDate, broadcastTime, replayCtime } = parseDateFromFilename(file);
+    if (!broadcastDate || !broadcastTime || !replayCtime) throw new Error(`文件名中的北京时间无效: ${file}`);
 
     // 解析 TXT 内容 (根据你的格式: 名称: xxx\n开始: xxx\n结束: xxx)
    const regex = /名称:\s*([^\r\n]+)\r?\n开始:\s*([^\r\n]+)\r?\n结束:\s*([^\r\n]+)/g;
@@ -77,6 +78,7 @@ async function generateData() {
         endTime: match[3].trim(),
         date: broadcastDate, // 归档日期 (已处理6点逻辑)
         broadcastTime: broadcastTime, // 直播开播时间 (如 "2025-11-23 00:06:21")
+        replayCtime: replayCtime, // 录播绝对时间（Unix 毫秒）
         filename: file,
         fullContent: content // 保存完整文本供阅读
       });

@@ -162,7 +162,8 @@ scripts/
 - 微博 `createdAt` 是带时区的 UTC ISO 绝对时刻，B站 `created` 是 Unix 秒时间戳，口袋48 `ctime` 是 Unix 毫秒时间戳；合并脚本只按绝对时刻排序并原样保留，不转换成北京时间字符串。
 - 页面展示统一转换为 `Asia/Shanghai`。`generatedAt`、`createdAt` 等生成或创建时刻继续使用 UTC ISO，不参与日期归档。
 - 只有 `songs.json` 的 `date`、`videoclips.json` 的 `replayDate`，以及运行时录播日历分组使用北京时间 06:00 规则：严格早于 06:00 归前一天，06:00 整归当天。
-- 切片文件名中的日期时间被视为已经是北京时间文字，直接解析年月日和小时，不交给浏览器或 Node 猜测时区；视频切片上传则由 PHP 根据 `replayCtime` 在 `Asia/Shanghai` 下重新生成归档日期。
+- `songs.json` 与 `videoclips.json` 的每条记录都必须包含数值型 Unix 毫秒时间戳 `replayCtime`；`broadcastTime`、`date` 和 `replayDate` 都是由它生成的派生字段。
+- 切片文件名中的日期时间被视为已经是北京时间文字，并在生成 `songs.json` 时转换为 `replayCtime`；视频上传只提交 `liveId` 与 `replayCtime`，PHP 不接受旧版时间文字或客户端计算的归档日期。
 
 ### 数据来源与开源协议
 
@@ -195,9 +196,14 @@ npm run preview
 
 ```bash
 npm run gen
+npm run migrate:time-data
 npm run sync-bili
 npm run sync-weibo
 ```
+
+`migrate:time-data` 用于一次性转换本地现有的 `songs.json` 与 `videoclips.json`；转换完成后，日期审计会要求每条切片都有新格式的 `replayCtime`。
+
+本次格式升级不保留旧版上传兼容。部署时必须把新版前端、`upload.php`、`time.php` 和转换后的两个切片 JSON 一起替换；`public/data/` 已被 Git 忽略，因此转换后的 JSON 需要单独上传，不能只依赖 `git pull`。
 
 时间测试与只读日期审计：
 

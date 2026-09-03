@@ -141,7 +141,6 @@ import {
 } from '@/composables/useDanmakuEmbed';
 import DanmakuToggle from '@/components/DanmakuToggle.vue';
 import audioPlayer from '@/composables/useAudioPlayer';
-import { formatBeijingDateTime } from '@/utils/time';
 
 const DATA_URL = '/data/videoclips.json';
 
@@ -259,21 +258,6 @@ const downloadBlob = (data, filename) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-const findReplayByTime = async (pocketId, targetTime) => {
-  let next = '0';
-  while (next) {
-    const data = await p48.getLiveList(Number(pocketId), next);
-    if (data?.content?.liveList?.length) {
-      for (const r of data.content.liveList) {
-        const timeStr = formatBeijingDateTime(r.ctime);
-        if (timeStr === targetTime) return r;
-      }
-      next = data.content.next;
-    } else break;
-  }
-  return null;
-};
-
 const openClipDialog = (item) => {
   clipTarget.value = item;
   clipLogs.value = [];
@@ -297,17 +281,11 @@ const handleClip = async () => {
       await ffmpegMgr.load();
     }
 
-    let replay = item.liveId ? { liveId: item.liveId, title: item.replayTitle } : null;
-    if (!replay) {
-      addClipLog(`🔍 按北京时间查找 ${item.broadcastTime} 的录播...`);
-      const roomMap = await p48.getRoomMap();
-      const pocketId = roomMap['徐郑子滢'];
-      if (!pocketId) throw new Error('未找到徐郑子滢的口袋房间号');
-      replay = await findReplayByTime(pocketId, item.broadcastTime);
-    } else {
-      addClipLog(`🔍 使用录播 ID ${item.liveId}...`);
+    if (!item.liveId || !Number.isFinite(Number(item.replayCtime)) || Number(item.replayCtime) <= 0) {
+      throw new Error('视频切片数据格式无效：缺少 liveId 或 replayCtime');
     }
-    if (!replay) throw new Error('未找到匹配的录播，请确认直播时间正确');
+    const replay = { liveId: item.liveId, title: item.replayTitle };
+    addClipLog(`🔍 使用录播 ID ${item.liveId}...`);
     addClipLog(`✅ 找到录播: ${replay.title || '(无标题)'}`);
 
     addClipLog('📥 获取直播流地址...');

@@ -75,3 +75,16 @@ export function getArchiveDateFromBeijingDateTime(value) {
   if (!parts) return null
   return parts.hour < ARCHIVE_DAY_START_HOUR ? previousCivilDate(parts) : formatCivilDate(parts)
 }
+
+export function unixMsFromBeijingDateTime(value) {
+  const parts = parseBeijingDateTime(value)
+  if (!parts) return null
+  return Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour - 8,
+    parts.minute,
+    parts.second
+  )
+}

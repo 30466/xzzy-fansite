@@ -15,6 +15,11 @@ function archiveDateFromBeijingDateTime(string $value): ?string {
     if ((int) $date->format('G') < ARCHIVE_DAY_START_HOUR) $date = $date->modify('-1 day');
     return $date->format('Y-m-d');
 }
+
+function unixMsFromBeijingDateTime(string $value): ?int {
+    $date = parseBeijingDateTime($value);
+    return $date === null ? null : ((int) $date->format('U')) * 1000;
+}
 function beijingDateTimeFromUnixMs($value): ?DateTimeImmutable {
     if (!is_numeric($value) || (float) $value <= 0) return null;
     try { return (new DateTimeImmutable('@' . (int) floor(((float) $value) / 1000)))->setTimezone(beijingTimeZone()); }
