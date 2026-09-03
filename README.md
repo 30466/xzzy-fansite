@@ -49,7 +49,7 @@
 
 ### 口袋48录播回放 `/replay`
 
-- 从口袋48接口读取徐郑子滢的录播记录，以次日 `06:00` 为日期归档边界。
+- 从口袋48接口读取徐郑子滢的录播记录，并按北京时间自然日归档。
 - 日历支持年月选择、上月/下月、最早/最新跳转和按需加载全部录播。
 - 选择录播后进入播放器与信息面板的分栏界面，使用 ArtPlayer 和 hls.js 播放 HLS 视频。
 - 支持口袋48 LRC 弹幕叠加、弹幕时间轴跟随、点击弹幕跳转播放位置。
@@ -161,9 +161,9 @@ scripts/
 
 - 微博 `createdAt` 是带时区的 UTC ISO 绝对时刻，B站 `created` 是 Unix 秒时间戳，口袋48 `ctime` 是 Unix 毫秒时间戳；合并脚本只按绝对时刻排序并原样保留，不转换成北京时间字符串。
 - 页面展示统一转换为 `Asia/Shanghai`。`generatedAt`、`createdAt` 等生成或创建时刻继续使用 UTC ISO，不参与日期归档。
-- 只有 `songs.json` 的 `date`、`videoclips.json` 的 `replayDate`，以及运行时录播日历分组使用北京时间 06:00 规则：严格早于 06:00 归前一天，06:00 整归当天。
-- `songs.json` 与 `videoclips.json` 的每条记录都必须包含数值型 Unix 毫秒时间戳 `replayCtime`；`broadcastTime`、`date` 和 `replayDate` 都是由它生成的派生字段。
-- 切片文件名中的日期时间被视为已经是北京时间文字，并在生成 `songs.json` 时转换为 `replayCtime`；视频上传只提交 `liveId` 与 `replayCtime`，PHP 不接受旧版时间文字或客户端计算的归档日期。
+- `songs.json` 的 `date`、`videoclips.json` 的 `replayDate` 和录播日历分组都使用北京时间自然日，以北京时间 `00:00` 为日期边界。
+- 切片文件名中的日期时间被视为北京时间文字；`songs.json` 保持原有字段结构，由文件名前缀直接生成 `date` 和 `broadcastTime`。
+- 视频切片继续由上传表单直接写入 `videoclips.json`，保持原有 `broadcastTime`、`replayDate` 和 `liveId` 等字段，不要求额外的绝对时间字段。
 
 ### 数据来源与开源协议
 
@@ -196,14 +196,11 @@ npm run preview
 
 ```bash
 npm run gen
-npm run migrate:time-data
 npm run sync-bili
 npm run sync-weibo
 ```
 
-`migrate:time-data` 用于一次性转换本地现有的 `songs.json` 与 `videoclips.json`；转换完成后，日期审计会要求每条切片都有新格式的 `replayCtime`。
-
-本次格式升级不保留旧版上传兼容。部署时必须把新版前端、`upload.php`、`time.php` 和转换后的两个切片 JSON 一起替换；`public/data/` 已被 Git 忽略，因此转换后的 JSON 需要单独上传，不能只依赖 `git pull`。
+`public/data/` 已被 Git 忽略。重新生成的 `songs.json` 需要单独上传；视频切片仍沿用原有 JSON 结构，不需要迁移。
 
 时间测试与只读日期审计：
 
@@ -269,7 +266,7 @@ npm run audit:dates
 
 ### 录播数据与音乐播放器
 
-录播列表首次只加载一页，需要时再翻页加载全部记录；`liveId` 用于去重。系统先把 `ctime` 显式转换为北京时间，再直接判断小时是否早于 06:00，只有早于边界才将民用日期减一天；不会通过“减 6 小时再取 UTC 日期”归档。`getLiveOne` 补充播放流、封面、弹幕和主播信息等完整字段，关键请求均带重试。
+录播列表首次只加载一页，需要时再翻页加载全部记录；`liveId` 用于去重。系统把 `ctime` 显式转换为北京时间，并直接使用转换后的自然日期进行日历分组，不依赖浏览器本地时区。`getLiveOne` 补充播放流、封面、弹幕和主播信息等完整字段，关键请求均带重试。
 
 全局音乐播放器由模块级唯一 `Audio` 实例管理，搜索结果、底部播放条和详情面板共享播放列表与进度，支持列表循环、单曲循环、随机播放和错误自动跳过。
 

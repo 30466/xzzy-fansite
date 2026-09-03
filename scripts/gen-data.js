@@ -2,7 +2,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getArchiveDateFromBeijingDateTime, unixMsFromBeijingDateTime } from '../src/utils/time.js';
 
 // 获取路径上下文
 const __filename = fileURLToPath(import.meta.url);
@@ -24,21 +23,25 @@ function cleanSongName(name) {
   return s.trim();
 }
 
-// 辅助函数：处理日期逻辑 (凌晨6点前算前一天)
+// 文件名中的日期时间已经是北京时间文字，归档日期就是自然日。
 // 输入文件名示例: "2025-11-23~00.06.21.txt" 或包含此前缀的长文件名
 function parseDateFromFilename(filename) {
   try {
     // 提取时间部分: 2025-11-23~00.06.21
     const match = filename.match(/(\d{4}-\d{2}-\d{2})~(\d{2})\.(\d{2})\.(\d{2})/);
-    if (!match) return { date: null, broadcastTime: null, replayCtime: null };
+    if (!match) return { date: null, broadcastTime: null };
 
     const [_, dateStr, hourStr, minuteStr, secondStr] = match;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const probe = new Date(Date.UTC(year, month - 1, day));
+    const validDate = probe.getUTCFullYear() === year && probe.getUTCMonth() + 1 === month && probe.getUTCDate() === day;
+    const validTime = Number(hourStr) < 24 && Number(minuteStr) < 60 && Number(secondStr) < 60;
+    if (!validDate || !validTime) return { date: null, broadcastTime: null };
     const broadcastTime = `${dateStr} ${hourStr}:${minuteStr}:${secondStr}`;
-    const date = getArchiveDateFromBeijingDateTime(broadcastTime);
-    return { date, broadcastTime, replayCtime: unixMsFromBeijingDateTime(broadcastTime) };
+    return { date: dateStr, broadcastTime };
   } catch (e) {
     console.error(`解析日期失败: ${filename}`, e);
-    return { date: null, broadcastTime: null, replayCtime: null };
+    return { date: null, broadcastTime: null };
   }
 }
 
@@ -57,8 +60,8 @@ async function generateData() {
   for (const file of files) {
     const filePath = path.join(SOURCE_DIR, file);
     const content = fs.readFileSync(filePath, 'utf-8');
-    const { date: broadcastDate, broadcastTime, replayCtime } = parseDateFromFilename(file);
-    if (!broadcastDate || !broadcastTime || !replayCtime) throw new Error(`文件名中的北京时间无效: ${file}`);
+    const { date: broadcastDate, broadcastTime } = parseDateFromFilename(file);
+    if (!broadcastDate || !broadcastTime) throw new Error(`文件名中的北京时间无效: ${file}`);
 
     // 解析 TXT 内容 (根据你的格式: 名称: xxx\n开始: xxx\n结束: xxx)
    const regex = /名称:\s*([^\r\n]+)\r?\n开始:\s*([^\r\n]+)\r?\n结束:\s*([^\r\n]+)/g;
@@ -76,9 +79,8 @@ async function generateData() {
         cleanName: cleanSongName(rawName),
         startTime: match[2].trim(),
         endTime: match[3].trim(),
-        date: broadcastDate, // 归档日期 (已处理6点逻辑)
+        date: broadcastDate, // 北京时间自然日
         broadcastTime: broadcastTime, // 直播开播时间 (如 "2025-11-23 00:06:21")
-        replayCtime: replayCtime, // 录播绝对时间（Unix 毫秒）
         filename: file,
         fullContent: content // 保存完整文本供阅读
       });

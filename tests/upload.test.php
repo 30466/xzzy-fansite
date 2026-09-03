@@ -24,7 +24,6 @@ function runUploadCase(string $zone, array $post, ?array $existingData = null): 
     $directory = sys_get_temp_dir() . '/fansite-upload-' . bin2hex(random_bytes(6));
     mkdir($directory . '/public/data', 0755, true);
     copy($root . '/upload.php', $directory . '/upload.php');
-    copy($root . '/time.php', $directory . '/time.php');
     file_put_contents($directory . '/.env', "UPLOAD_PASSWORD=test-only\n");
     $initialData = $existingData ?? ['generatedAt' => '2026-09-03T00:00:00+00:00', 'totalClips' => 0, 'clips' => []];
     file_put_contents($directory . '/public/data/videoclips.json', json_encode($initialData));
@@ -47,25 +46,25 @@ $basePost = [
     'startTime' => '00:01',
     'endTime' => '00:02',
     'liveId' => '123',
-    'replayTitle' => '测试录播'
+    'replayTitle' => '测试录播',
+    'broadcastTime' => '2026-08-28 13:56:00',
+    'replayDate' => '2026-08-28'
 ];
 
 foreach (['Asia/Shanghai', 'UTC', 'America/New_York'] as $zone) {
-    [$invalid] = runUploadCase($zone, $basePost);
-    expectUpload($invalid['success'] === false, "{$zone}: 缺少 replayCtime 必须拒绝");
-
-    [$valid, $data] = runUploadCase($zone, $basePost + ['replayCtime' => '1787896560000']);
-    expectUpload($valid['success'] === true, "{$zone}: 新格式上传成功");
+    [$valid, $data] = runUploadCase($zone, $basePost);
+    expectUpload($valid['success'] === true, "{$zone}: 原格式上传成功");
     $clip = $data['clips'][0] ?? null;
     expectUpload($clip['broadcastTime'] === '2026-08-28 13:56:00', "{$zone}: 北京时间");
-    expectUpload($clip['replayDate'] === '2026-08-28', "{$zone}: 六点归档日期");
-    expectUpload($clip['replayCtime'] === 1787896560000, "{$zone}: replayCtime 为 JSON 数值");
+    expectUpload($clip['replayDate'] === '2026-08-28', "{$zone}: 北京时间自然日");
+    expectUpload(!array_key_exists('replayCtime', $clip), "{$zone}: 不新增 replayCtime");
 }
 
 $legacyData = ['generatedAt' => '2026-09-03T00:00:00+00:00', 'totalClips' => 1, 'clips' => [[
-    'liveId' => '123', 'replayCtime' => '1787896560000'
+    'id' => 'old', 'liveId' => '456', 'broadcastTime' => '2025-07-28 23:26:06', 'replayDate' => '2025-07-28'
 ]]];
-[$legacy] = runUploadCase('UTC', $basePost + ['replayCtime' => '1787896560000'], $legacyData);
-expectUpload($legacy['success'] === false, '字符串 replayCtime 的旧 JSON 必须拒绝');
+[$legacy, $legacyResult] = runUploadCase('UTC', $basePost, $legacyData);
+expectUpload($legacy['success'] === true, '原格式旧 JSON 可以继续追加');
+expectUpload(count($legacyResult['clips']) === 2, '旧记录得到保留');
 
 echo "PHP upload contract tests passed" . PHP_EOL;

@@ -17,7 +17,7 @@
       </template>
       <div class="notice-content">
         <p>这里记录<b>非唱歌类</b>的视频切片（如<b>重大发表</b>、<b>有趣片段</b>等），支持一键剪切视频</p>
-        <p>所有时间均为<b>北京时间</b>；唱歌与录播归档以<b>第二天凌晨 06:00</b>为界。支持<b>标题</b>和<b>日期</b>搜索</p>
+        <p>所有时间均为<b>北京时间</b>，并按北京时间自然日归档。支持<b>标题</b>和<b>日期</b>搜索</p>
         <p>如果剪切时日志出现 <b>HTTP 478</b> 失败，则是口袋48录播源文件损坏，非网络或本网站问题</p>
       </div>
     </el-card>
@@ -281,9 +281,7 @@ const handleClip = async () => {
       await ffmpegMgr.load();
     }
 
-    if (!item.liveId || !Number.isFinite(Number(item.replayCtime)) || Number(item.replayCtime) <= 0) {
-      throw new Error('视频切片数据格式无效：缺少 liveId 或 replayCtime');
-    }
+    if (!item.liveId) throw new Error('视频切片数据格式无效：缺少 liveId');
     const replay = { liveId: item.liveId, title: item.replayTitle };
     addClipLog(`🔍 使用录播 ID ${item.liveId}...`);
     addClipLog(`✅ 找到录播: ${replay.title || '(无标题)'}`);

@@ -1,5 +1,4 @@
 export const BEIJING_TIME_ZONE = 'Asia/Shanghai'
-export const ARCHIVE_DAY_START_HOUR = 6
 
 const beijingPartsFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: BEIJING_TIME_ZONE,
@@ -20,11 +19,6 @@ function toValidDate(value) {
 
 const pad = value => String(value).padStart(2, '0')
 const formatCivilDate = parts => `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`
-function previousCivilDate(parts) {
-  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day - 1))
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
-}
-
 export function getBeijingParts(value = Date.now()) {
   const date = toValidDate(value)
   if (!date) return null
@@ -67,24 +61,9 @@ export function formatBeijingDateTime(value, { seconds = true } = {}) {
 }
 export function getArchiveDate(value) {
   const parts = getBeijingParts(value)
-  if (!parts) return null
-  return parts.hour < ARCHIVE_DAY_START_HOUR ? previousCivilDate(parts) : formatCivilDate(parts)
+  return parts ? formatCivilDate(parts) : null
 }
 export function getArchiveDateFromBeijingDateTime(value) {
   const parts = parseBeijingDateTime(value)
-  if (!parts) return null
-  return parts.hour < ARCHIVE_DAY_START_HOUR ? previousCivilDate(parts) : formatCivilDate(parts)
-}
-
-export function unixMsFromBeijingDateTime(value) {
-  const parts = parseBeijingDateTime(value)
-  if (!parts) return null
-  return Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour - 8,
-    parts.minute,
-    parts.second
-  )
+  return parts ? formatCivilDate(parts) : null
 }

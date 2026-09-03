@@ -31,7 +31,7 @@
         </div>
       </template>
       <div class="notice-content">
-        <p>1. 所有时间均为<b>北京时间</b>；唱歌与录播归档以<b>第二天凌晨 06:00</b>为界</p>
+        <p>1. 所有时间均为<b>北京时间</b>；唱歌与录播均按北京时间自然日归档</p>
         <p>2. 点击<b>”听歌”</b>会自动搜索并播放，底部播放器可查看歌曲详情</p>
         <p>3. 本网站仅支持<b>歌名</b>和<b>日期</b>搜索。如要<b>精确搜索</b>如<b>歌手</b>,<b>语种</b>等，请到小偶像音乐网站搜索</p>
         <p>4. 如果剪切时日志出现 <b>HTTP 478</b> 失败，则是口袋48录播源文件损坏，非网络或本网站问题</p>
@@ -284,7 +284,7 @@ import {
 import DanmakuToggle from '@/components/DanmakuToggle.vue';
 import audioPlayer from '@/composables/useAudioPlayer';
 import SongSearchResults from '@/components/SongSearchResults.vue';
-import { formatBeijingDate, getBeijingParts } from '@/utils/time';
+import { formatBeijingDate, formatBeijingDateTime, getBeijingParts } from '@/utils/time';
 	const searchVisible = ref(false);
 	const searchQuery = ref('');
 
@@ -665,13 +665,13 @@ const downloadBlob = (data, filename) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-const findReplayByCtime = async (pocketId, targetCtime) => {
+const findReplayByTime = async (pocketId, targetTime) => {
   let next = '0';
   while (next) {
     const data = await p48.getLiveList(Number(pocketId), next);
     if (data?.content?.liveList?.length) {
       for (const r of data.content.liveList) {
-        if (Math.abs(Number(r.ctime) - Number(targetCtime)) < 1000) return r;
+        if (formatBeijingDateTime(r.ctime) === targetTime) return r;
       }
       next = data.content.next;
     } else break;
@@ -703,9 +703,8 @@ const handleClipSong = async () => {
     const pocketId = roomMap['徐郑子滢'];
     if (!pocketId) throw new Error('未找到徐郑子滢的口袋房间号');
 
-    if (!Number.isFinite(Number(item.replayCtime)) || Number(item.replayCtime) <= 0) throw new Error('唱歌切片数据格式无效：缺少 replayCtime');
-    addClipLog(`🔍 按绝对时间查找 ${item.broadcastTime} 的录播...`);
-    const replay = await findReplayByCtime(pocketId, item.replayCtime);
+    addClipLog(`🔍 查找 ${item.broadcastTime} 的录播...`);
+    const replay = await findReplayByTime(pocketId, item.broadcastTime);
     if (!replay) throw new Error('未找到匹配的录播，请确认直播时间正确');
     addClipLog(`✅ 找到录播: ${replay.title || '(无标题)'}`);
 

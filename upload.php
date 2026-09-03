@@ -4,8 +4,6 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
-require_once __DIR__ . '/time.php';
-
 // === 辅助函数：解析 .env 文件 ===
 function loadEnv($path) {
     if (!file_exists($path)) return [];
@@ -29,17 +27,19 @@ function cleanSongName($name) {
     return trim($s);
 }
 
-// 从文件名解析日期（6点规则）
+// 文件名中的日期时间已经是北京时间文字，日期按自然日保存。
 function parseDateFromFilename($filename) {
     if (!preg_match('/(\d{4}-\d{2}-\d{2})~(\d{2})\.(\d{2})\.(\d{2})/', $filename, $m)) {
-        return ['date' => null, 'broadcastTime' => null, 'replayCtime' => null];
+        return ['date' => null, 'broadcastTime' => null];
+    }
+    [$year, $month, $day] = array_map('intval', explode('-', $m[1]));
+    if (!checkdate($month, $day, $year) || intval($m[2]) > 23 || intval($m[3]) > 59 || intval($m[4]) > 59) {
+        return ['date' => null, 'broadcastTime' => null];
     }
     $broadcastTime = "{$m[1]} {$m[2]}:{$m[3]}:{$m[4]}";
-    $date = archiveDateFromBeijingDateTime($broadcastTime);
     return [
-        'date' => $date,
-        'broadcastTime' => $broadcastTime,
-        'replayCtime' => unixMsFromBeijingDateTime($broadcastTime)
+        'date' => $m[1],
+        'broadcastTime' => $broadcastTime
     ];
 }
 
@@ -67,7 +67,6 @@ function regenerateSongsJson($sourceDir, $outputFile) {
                 'endTime' => trim($m[3]),
                 'date' => $dateInfo['date'],
                 'broadcastTime' => $dateInfo['broadcastTime'],
-                'replayCtime' => $dateInfo['replayCtime'],
                 'filename' => $filename,
                 'fullContent' => $content
             ];
@@ -116,20 +115,14 @@ if (isset($_POST['type']) && $_POST['type'] === 'videoclip') {
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
     $startTime = isset($_POST['startTime']) ? trim($_POST['startTime']) : '';
     $endTime = isset($_POST['endTime']) ? trim($_POST['endTime']) : '';
+    $broadcastTime = isset($_POST['broadcastTime']) ? trim($_POST['broadcastTime']) : '';
     $replayTitle = isset($_POST['replayTitle']) ? trim($_POST['replayTitle']) : '';
     $liveId = isset($_POST['liveId']) ? trim($_POST['liveId']) : '';
-    $replayCtime = isset($_POST['replayCtime']) ? trim($_POST['replayCtime']) : '';
+    $replayDate = isset($_POST['replayDate']) ? trim($_POST['replayDate']) : '';
 
     if (empty($name)) { $response['logs'][] = '❌ 切片名称不能为空'; echo json_encode($response); exit; }
     if (empty($startTime) || empty($endTime)) { $response['logs'][] = '❌ 开始时间和结束时间不能为空'; echo json_encode($response); exit; }
     if (empty($liveId)) { $response['logs'][] = '❌ 请选择录播'; echo json_encode($response); exit; }
-    if (!preg_match('/^\d+$/', $liveId)) { $response['logs'][] = '❌ 录播 ID 无效'; echo json_encode($response); exit; }
-    if (!preg_match('/^\d+$/', $replayCtime)) { $response['logs'][] = '❌ 缺少有效的录播绝对时间 replayCtime'; echo json_encode($response); exit; }
-    $replayCtime = (int) $replayCtime;
-    $replayDateTime = beijingDateTimeFromUnixMs($replayCtime);
-    $replayDate = archiveDateFromUnixMs($replayCtime);
-    if ($replayDateTime === null || $replayDate === null) { $response['logs'][] = '❌ 录播开播时间无效'; echo json_encode($response); exit; }
-    $broadcastTime = $replayDateTime->format('Y-m-d H:i:s');
 
     $dataDir = dirname($VIDEOCLIP_FILE);
     if (!is_dir($dataDir)) mkdir($dataDir, 0755, true);
@@ -137,32 +130,23 @@ if (isset($_POST['type']) && $_POST['type'] === 'videoclip') {
     $allClips = [];
     if (file_exists($VIDEOCLIP_FILE)) {
         $existing = json_decode(file_get_contents($VIDEOCLIP_FILE), true);
-        if (!is_array($existing) || !isset($existing['clips']) || !is_array($existing['clips'])) {
-            $response['logs'][] = '❌ 视频切片数据格式无效，已拒绝覆盖'; echo json_encode($response); exit;
-        }
-        foreach ($existing['clips'] as $clip) {
-            if (!isset($clip['replayCtime']) || !is_int($clip['replayCtime']) || $clip['replayCtime'] <= 0 || empty($clip['liveId'])) {
-                $response['logs'][] = '❌ 视频切片数据尚未转换为新格式'; echo json_encode($response); exit;
-            }
-        }
-        $allClips = $existing['clips'];
+        if ($existing && isset($existing['clips'])) $allClips = $existing['clips'];
     }
 
     $newClip = [
-        'id' => 'clip_' . gmdate('Ymd_His') . '_' . substr(md5(uniqid()), 0, 6),
+        'id' => 'clip_' . date('Ymd_His') . '_' . substr(md5(uniqid()), 0, 6),
         'name' => $name,
         'startTime' => $startTime,
         'endTime' => $endTime,
         'broadcastTime' => $broadcastTime,
         'replayTitle' => $replayTitle,
         'liveId' => $liveId,
-        'replayCtime' => $replayCtime,
         'replayDate' => $replayDate,
-        'createdAt' => utcNowIso()
+        'createdAt' => date('c')
     ];
     array_unshift($allClips, $newClip);
 
-    $output = ['generatedAt' => utcNowIso(), 'totalClips' => count($allClips), 'clips' => $allClips];
+    $output = ['generatedAt' => date('c'), 'totalClips' => count($allClips), 'clips' => $allClips];
     file_put_contents($VIDEOCLIP_FILE, json_encode($output, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 
     $response['logs'][] = "✅ 视频切片「{$name}」保存成功！（当前共 " . count($allClips) . " 条）";
