@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getArchiveDateFromBeijingDateTime } from '../src/utils/time.js';
 
 // 获取路径上下文
 const __filename = fileURLToPath(import.meta.url);
@@ -33,18 +34,8 @@ function parseDateFromFilename(filename) {
 
     const [_, dateStr, hourStr, minuteStr, secondStr] = match;
     const broadcastTime = `${dateStr} ${hourStr}:${minuteStr}:${secondStr}`;
-    let date = new Date(`${dateStr}T${hourStr}:${minuteStr}:${secondStr}`);
-    
-    // 核心逻辑：如果小时 < 6，日期减 1 天
-    if (parseInt(hourStr, 10) < 6) {
-      date.setDate(date.getDate() - 1);
-    }
-
-    // 返回格式化日期 YYYY-MM-DD
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return { date: `${y}-${m}-${d}`, broadcastTime };
+    const date = getArchiveDateFromBeijingDateTime(broadcastTime);
+    return { date, broadcastTime };
   } catch (e) {
     console.error(`解析日期失败: ${filename}`, e);
     return { date: '未知日期', broadcastTime: null };
@@ -93,7 +84,7 @@ async function generateData() {
   }
 
   // 按日期倒序排列
-  allSongs.sort((a, b) => new Date(b.date) - new Date(a.date));
+  allSongs.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
   // 写入 public 目录
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(allSongs, null, 2));

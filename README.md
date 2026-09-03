@@ -157,6 +157,13 @@ scripts/
 
 抓取原始数据和生成后的 JSON 不提交到 Git；`scripts/merge-bilibili.js` 和 `scripts/merge-weibo.js` 是本项目用于合并爬虫项目数据的脚本，已纳入 Git，分别从本地 core 项目读取抓取结果并生成前端 JSON。脚本中的 `bili-core`、`weibo-core` 路径是维护者本机路径，其他使用者需要按自己的目录结构修改。
 
+### 时间契约
+
+- 微博 `createdAt` 是带时区的 UTC ISO 绝对时刻，B站 `created` 是 Unix 秒时间戳，口袋48 `ctime` 是 Unix 毫秒时间戳；合并脚本只按绝对时刻排序并原样保留，不转换成北京时间字符串。
+- 页面展示统一转换为 `Asia/Shanghai`。`generatedAt`、`createdAt` 等生成或创建时刻继续使用 UTC ISO，不参与日期归档。
+- 只有 `songs.json` 的 `date`、`videoclips.json` 的 `replayDate`，以及运行时录播日历分组使用北京时间 06:00 规则：严格早于 06:00 归前一天，06:00 整归当天。
+- 切片文件名中的日期时间被视为已经是北京时间文字，直接解析年月日和小时，不交给浏览器或 Node 猜测时区；视频切片上传则由 PHP 根据 `replayCtime` 在 `Asia/Shanghai` 下重新生成归档日期。
+
 ### 数据来源与开源协议
 
 - [bili-core](https://github.com/30466/bili-core)：负责 B 站视频列表、视频详情、分 P 和合集元数据的抓取与导出。
@@ -190,6 +197,13 @@ npm run preview
 npm run gen
 npm run sync-bili
 npm run sync-weibo
+```
+
+时间测试与只读日期审计：
+
+```bash
+npm test
+npm run audit:dates
 ```
 
 > `sync-bili` 和 `sync-weibo` 使用仓库中的合并脚本，并依赖本地 `bili-core`、`weibo-core` 的抓取数据目录；首次使用前请按上文说明修改脚本中的本机路径。生成的 `public/data/` 仍属于本地运行数据，不提交到 Git。
@@ -249,7 +263,7 @@ npm run sync-weibo
 
 ### 录播数据与音乐播放器
 
-录播列表首次只加载一页，需要时再翻页加载全部记录；`liveId` 用于去重，录播时间减去 6 小时后用于日期归档。`getLiveOne` 补充播放流、封面、弹幕和主播信息等完整字段，关键请求均带重试。
+录播列表首次只加载一页，需要时再翻页加载全部记录；`liveId` 用于去重。系统先把 `ctime` 显式转换为北京时间，再直接判断小时是否早于 06:00，只有早于边界才将民用日期减一天；不会通过“减 6 小时再取 UTC 日期”归档。`getLiveOne` 补充播放流、封面、弹幕和主播信息等完整字段，关键请求均带重试。
 
 全局音乐播放器由模块级唯一 `Audio` 实例管理，搜索结果、底部播放条和详情面板共享播放列表与进度，支持列表循环、单曲循环、随机播放和错误自动跳过。
 

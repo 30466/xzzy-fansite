@@ -64,6 +64,7 @@ import P48ClipPanel from '@/components/P48ClipPanel.vue'
 import DanmakuTimeline from '@/components/DanmakuTimeline.vue'
 import { useReplayData } from '@/composables/useReplayData'
 import * as p48 from '@/api/pocket48'
+import { formatBeijingDateTime, formatBeijingTime } from '@/utils/time'
 
 const CACHE_KEY = 'replay_state'
 
@@ -121,7 +122,7 @@ function restoreState(liveId) {
     }
     currentReplay.value = saved.currentReplay
     replayDetail.value = saved.replayDetail
-    formattedBroadcastTime.value = saved.formattedBroadcastTime || ''
+    formattedBroadcastTime.value = formatBroadcastFilenameTime(saved.currentReplay.ctime)
     showPanel.value = saved.showPanel !== false
     activeTab.value = saved.activeTab || 'info'
     return true
@@ -129,15 +130,15 @@ function restoreState(liveId) {
 }
 
 function fmtTime(ms) {
-  if (!ms) return ''
-  const d = new Date(+ms), p = n => String(n).padStart(2, '0')
-  return `${p(d.getHours())}:${p(d.getMinutes())}`
+  return formatBeijingTime(ms)
 }
 
 function fmtDate(ms) {
-  if (!ms) return ''
-  const d = new Date(+ms), p = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+  return formatBeijingDateTime(ms, { seconds: false })
+}
+
+function formatBroadcastFilenameTime(ms) {
+  return formatBeijingDateTime(ms).replace(/[-: ]/g, char => char === ' ' ? '~' : char === ':' ? '.' : '-')
 }
 
 async function onSelectReplay(r, options = {}) {
@@ -173,7 +174,7 @@ async function onSelectReplay(r, options = {}) {
     }
 
     currentReplay.value = merged
-    formattedBroadcastTime.value = fmtDate(merged.ctime).replace(/[-: ]/g, c => c===' '?'~':c===':'?'.':'-')
+    formattedBroadcastTime.value = formatBroadcastFilenameTime(merged.ctime)
     saveState()
     router.replace({ query: { live: merged.liveId } })
   } catch (e) {

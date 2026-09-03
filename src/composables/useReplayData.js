@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as p48 from '@/api/pocket48'
+import { getArchiveDate } from '@/utils/time'
 
 const HARDCODED_MEMBER = '徐郑子滢'
 
@@ -15,18 +16,16 @@ let nextPage = '0'
 let pocketIdCache = null
 const seenIds = new Set()
 
-function getReplayDate(ctimeMs) {
-  const d = new Date(Number(ctimeMs))
-  d.setHours(d.getHours() - 6)
-  return d.toISOString().slice(0, 10)
-}
-
 function addReplays(liveList) {
   let added = 0
   for (const r of liveList) {
     if (seenIds.has(r.liveId)) continue
+    const dateKey = getArchiveDate(r.ctime)
+    if (!dateKey) {
+      console.warn('[录播] 跳过无效开播时间:', r.liveId, r.ctime)
+      continue
+    }
     seenIds.add(r.liveId)
-    const dateKey = getReplayDate(r.ctime)
     if (!replaysByDate.value[dateKey]) {
       replaysByDate.value[dateKey] = []
     }

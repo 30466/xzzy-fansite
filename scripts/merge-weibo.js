@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getAbsoluteTime } from '../src/utils/time.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_SRC = '/Users/cbj/Documents/code/weibo-core/data';
@@ -127,7 +128,8 @@ for (const listedName of accountNames) {
 }
 
 const posts = [...postsById.values()].sort((a, b) => {
-  const timeDiff = Date.parse(b.createdAt ?? 0) - Date.parse(a.createdAt ?? 0);
+  // createdAt 是带时区的绝对时刻；合并层只排序，不转换或截取业务日期。
+  const timeDiff = getAbsoluteTime(b.createdAt) - getAbsoluteTime(a.createdAt);
   return timeDiff || String(b.id ?? b.mid ?? '').localeCompare(String(a.id ?? a.mid ?? ''));
 });
 

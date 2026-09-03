@@ -17,7 +17,7 @@
       </template>
       <div class="notice-content">
         <p>这里记录<b>非唱歌类</b>的视频切片（如<b>重大发表</b>、<b>有趣片段</b>等），支持一键剪切视频</p>
-        <p>本站日期以<b>第二天凌晨 06:00</b>为界，归档为前一天。支持<b>标题</b>和<b>日期</b>搜索</p>
+        <p>所有时间均为<b>北京时间</b>；唱歌与录播归档以<b>第二天凌晨 06:00</b>为界。支持<b>标题</b>和<b>日期</b>搜索</p>
         <p>如果剪切时日志出现 <b>HTTP 478</b> 失败，则是口袋48录播源文件损坏，非网络或本网站问题</p>
       </div>
     </el-card>
@@ -141,6 +141,7 @@ import {
 } from '@/composables/useDanmakuEmbed';
 import DanmakuToggle from '@/components/DanmakuToggle.vue';
 import audioPlayer from '@/composables/useAudioPlayer';
+import { formatBeijingDateTime } from '@/utils/time';
 
 const DATA_URL = '/data/videoclips.json';
 
@@ -264,8 +265,7 @@ const findReplayByTime = async (pocketId, targetTime) => {
     const data = await p48.getLiveList(Number(pocketId), next);
     if (data?.content?.liveList?.length) {
       for (const r of data.content.liveList) {
-        const ctime = new Date(Number(r.ctime));
-        const timeStr = `${ctime.getFullYear()}-${String(ctime.getMonth()+1).padStart(2,'0')}-${String(ctime.getDate()).padStart(2,'0')} ${String(ctime.getHours()).padStart(2,'0')}:${String(ctime.getMinutes()).padStart(2,'0')}:${String(ctime.getSeconds()).padStart(2,'0')}`;
+        const timeStr = formatBeijingDateTime(r.ctime);
         if (timeStr === targetTime) return r;
       }
       next = data.content.next;
@@ -297,15 +297,16 @@ const handleClip = async () => {
       await ffmpegMgr.load();
     }
 
-    addClipLog('📡 获取成员信息...');
-    const mapping = await p48.getMapping();
-    if (!mapping['徐郑子滢']) throw new Error('未找到徐郑子滢的成员ID');
-    const roomMap = await p48.getRoomMap();
-    const pocketId = roomMap['徐郑子滢'];
-    if (!pocketId) throw new Error('未找到徐郑子滢的口袋房间号');
-
-    addClipLog(`🔍 查找 ${item.broadcastTime} 的录播...`);
-    const replay = await findReplayByTime(pocketId, item.broadcastTime);
+    let replay = item.liveId ? { liveId: item.liveId, title: item.replayTitle } : null;
+    if (!replay) {
+      addClipLog(`🔍 按北京时间查找 ${item.broadcastTime} 的录播...`);
+      const roomMap = await p48.getRoomMap();
+      const pocketId = roomMap['徐郑子滢'];
+      if (!pocketId) throw new Error('未找到徐郑子滢的口袋房间号');
+      replay = await findReplayByTime(pocketId, item.broadcastTime);
+    } else {
+      addClipLog(`🔍 使用录播 ID ${item.liveId}...`);
+    }
     if (!replay) throw new Error('未找到匹配的录播，请确认直播时间正确');
     addClipLog(`✅ 找到录播: ${replay.title || '(无标题)'}`);
 

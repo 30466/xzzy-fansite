@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "npm run test:time && php tests/time.test.php",
+    "test:time": "TZ=Asia/Shanghai node --test tests/time.test.js && TZ=UTC node --test tests/time.test.js && TZ=America/New_York node --test tests/time.test.js",
+    "audit:dates": "node scripts/audit-dates.js",
     "gen": "node scripts/gen-data.js",
     "sync-bili": "node scripts/merge-bilibili.js",
     "sync-weibo": "node scripts/merge-weibo.js"

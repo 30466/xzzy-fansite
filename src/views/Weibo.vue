@@ -5,6 +5,7 @@
         共 <b>{{ allPosts.length }}</b> 条微博 · 来自 <b>{{ accountList.length }}</b> 位用户
         <span v-if="activeAccount"> · 当前用户：<b>{{ activeAccount }}</b>（{{ accountFilteredCount }}条微博）</span>
       </p>
+      <p class="page-stats">所有发布时间均为北京时间</p>
     </div>
 
     <el-card class="account-filter-card" shadow="never">
@@ -101,6 +102,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { Connection, Menu, Search, SortDown, SortUp } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { formatBeijingDateTime, getAbsoluteTime } from '@/utils/time'
 
 const FEATURED_ACCOUNT_NAMES = ['GNZ48-徐郑子滢', '爱吃抹茶味的贝果酱']
 const allPosts = ref([])
@@ -163,7 +165,7 @@ const totalPages = computed(() => Math.ceil(filteredPosts.value.length / pageSiz
 const pagedPosts = computed(() => filteredPosts.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
 
 function sortValue(post, field) {
-  if (field === 'created') return Date.parse(post.createdAt || 0)
+  if (field === 'created') return getAbsoluteTime(post.createdAt)
   return { like: post.attitudesCount, repost: post.repostsCount, reply: post.commentsCount }[field] || 0
 }
 function toggleAccount(name) { activeAccount.value = activeAccount.value === name ? null : name }
@@ -175,7 +177,7 @@ function formatNumber(number) {
   return String(number)
 }
 function formatDate(value) {
-  return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return formatBeijingDateTime(value, { seconds: false }) || '-'
 }
 function mediaLabel(post) {
   if (post.videoCount) return `🎬 ${post.videoCount}个视频`

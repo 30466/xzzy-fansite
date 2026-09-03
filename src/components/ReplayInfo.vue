@@ -45,6 +45,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Download } from '@element-plus/icons-vue'
+import { formatBeijingDateTime } from '@/utils/time'
 
 const props = defineProps({
   info: { type: Object, default: null },
@@ -71,9 +72,7 @@ const typeTag = computed(() => {
 
 const formattedTime = computed(() => {
   if (!props.info?.ctime) return '-'
-  const d = new Date(Number(props.info.ctime))
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  return formatBeijingDateTime(props.info.ctime) || '-'
 })
 
 const memberInfo = computed(() => {

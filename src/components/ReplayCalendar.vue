@@ -14,7 +14,7 @@
 
     <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 12px">
       <template #title>
-        日期归档规则：以次日 06:00 为界，凌晨 06:00 前的录播归档为前一天
+        所有时间均为北京时间；录播归档以次日 06:00 为界，凌晨 06:00 前归档为前一天
       </template>
     </el-alert>
 
@@ -100,18 +100,20 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheck } from '@element-plus/icons-vue'
 import { useReplayData } from '@/composables/useReplayData'
+import { formatBeijingDateTime, getBeijingParts } from '@/utils/time'
 
 const emit = defineEmits(['select-replay'])
 
 const { loading, loadingFull, loaded, loadedAll, totalCount, replaysByDate, quickLoad, loadAll } = useReplayData()
 
-const calendarDate = ref(new Date())
+const beijingToday = getBeijingParts()
+const calendarDate = ref(new Date(beijingToday.year, beijingToday.month - 1, beijingToday.day))
 const selectedDate = ref('')
 const selectedReplay = ref(null)
 
-const currentYearNum = new Date().getFullYear()
+const currentYearNum = beijingToday.year
 const selectedYear = ref(currentYearNum)
-const selectedMonth = ref(new Date().getMonth() + 1)
+const selectedMonth = ref(beijingToday.month)
 
 const replaysForSelectedDate = computed(() => {
   if (!selectedDate.value) return []
@@ -137,7 +139,7 @@ const latestYear = computed(() => {
 const latestMonth = computed(() => {
   const dates = Object.keys(replaysByDate.value)
     .filter(d => d.startsWith(String(latestYear.value)))
-  if (dates.length === 0) return new Date().getMonth() + 1
+  if (dates.length === 0) return beijingToday.month
   return Math.max(...dates.map(d => parseInt(d.split('-')[1])))
 })
 
@@ -170,10 +172,7 @@ function onDateClick(dayStr) {
 }
 
 function formatTime(ctimeMs) {
-  if (!ctimeMs) return ''
-  const d = new Date(Number(ctimeMs))
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return formatBeijingDateTime(ctimeMs, { seconds: false })
 }
 
 async function onReplaySelect(r) {

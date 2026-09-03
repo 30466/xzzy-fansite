@@ -75,7 +75,7 @@ for (const upDir of upDirs) {
     try {
       raw = fs.readFileSync(filePath, 'utf-8');
     } catch (e) {
-      console.warn(`⚠️  ${dir.name}/${file}: 读取失败`, e.message);
+      console.warn(`⚠️  ${upDir.name}/${file}: 读取失败`, e.message);
       continue;
     }
 
@@ -84,7 +84,7 @@ for (const upDir of upDirs) {
       data = JSON.parse(raw);
     } catch (e) {
       // 可能有多余数据，尝试修复
-      console.warn(`⚠️  ${dir.name}/${file}: JSON解析失败，尝试修复...`);
+      console.warn(`⚠️  ${upDir.name}/${file}: JSON解析失败，尝试修复...`);
       // 如果文件包含多个JSON对象，只取第一个
       const firstBrace = raw.indexOf('{');
       if (firstBrace === -1) continue;
@@ -101,7 +101,7 @@ for (const upDir of upDirs) {
       try {
         data = JSON.parse(raw.slice(firstBrace, end));
       } catch {
-        console.error(`❌ ${dir.name}/${file}: 无法修复`);
+        console.error(`❌ ${upDir.name}/${file}: 无法修复`);
         continue;
       }
     }
@@ -159,7 +159,7 @@ for (const video of allVideos) {
   }
 }
 
-// 按发布时间倒序排列
+// created 是 Unix 秒时间戳；合并层按绝对时刻排序，不转换或截取业务日期。
 allVideos.sort((a, b) => b.created - a.created);
 
 const output = {

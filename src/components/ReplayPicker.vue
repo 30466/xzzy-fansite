@@ -29,6 +29,7 @@
 <script setup>
 import { ref } from 'vue'
 import ReplayCalendar from '@/components/ReplayCalendar.vue'
+import { formatBeijingDateTime } from '@/utils/time'
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -41,10 +42,7 @@ const dialogVisible = ref(false)
 const selected = ref(props.modelValue)
 
 function formatTime(ctimeMs) {
-  if (!ctimeMs) return ''
-  const d = new Date(Number(ctimeMs))
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return formatBeijingDateTime(ctimeMs, { seconds: false })
 }
 
 function onSelect(r) {

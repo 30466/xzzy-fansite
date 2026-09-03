@@ -13,6 +13,7 @@
       <!-- ═══════ 唱歌切片本上传 ═══════ -->
 
       <div class="desc-block">
+        <p>🕐 <b>时间规则</b>：所有时间均为北京时间；凌晨 06:00 前归档为前一天</p>
         <p>📌 <b>命名规则</b>：以录播时间命名的 <code>.txt</code> 文件，例如 <code>2026-03-10~00.39.31.txt</code></p>
         <p>📌 <b>格式要求</b>：严格按照唱歌记录切片本的格式，可在本站「口袋48录播回放」→「批量剪切」中剪切获取</p>
         <p>📌 <b>管理员密码</b>：请在<b>关于页</b>联系我</p>
@@ -169,6 +170,7 @@ import { ref, onMounted } from 'vue';
 import { FolderAdd, UploadFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import ReplayPicker from '@/components/ReplayPicker.vue';
+import { formatBeijingDateTime, getArchiveDate } from '@/utils/time';
 
 onMounted(() => {
   document.title = '徐郑子滢 ✽ 上传';
@@ -274,16 +276,12 @@ const submitVideoClip = async () => {
 
   // 格式化录播时间
   const fmtReplayTime = (ms) => {
-    const d = new Date(Number(ms));
-    const p = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    return formatBeijingDateTime(ms);
   };
 
   // 获取录播归档日期（6点规则）
   const getReplayDate = (ms) => {
-    const d = new Date(Number(ms));
-    d.setHours(d.getHours() - 6);
-    return d.toISOString().slice(0, 10);
+    return getArchiveDate(ms);
   };
 
   const formData = new FormData();
@@ -295,6 +293,7 @@ const submitVideoClip = async () => {
   formData.append('broadcastTime', fmtReplayTime(form.replay.ctime));
   formData.append('replayTitle', form.replay.title || '');
   formData.append('liveId', String(form.replay.liveId));
+  formData.append('replayCtime', String(form.replay.ctime));
   formData.append('replayDate', getReplayDate(form.replay.ctime));
 
   try {

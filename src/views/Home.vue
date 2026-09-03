@@ -31,7 +31,7 @@
         </div>
       </template>
       <div class="notice-content">
-        <p>1. 本站日期以<b>第二天凌晨 06:00</b>为界，归档为前一天</p>
+        <p>1. 所有时间均为<b>北京时间</b>；唱歌与录播归档以<b>第二天凌晨 06:00</b>为界</p>
         <p>2. 点击<b>”听歌”</b>会自动搜索并播放，底部播放器可查看歌曲详情</p>
         <p>3. 本网站仅支持<b>歌名</b>和<b>日期</b>搜索。如要<b>精确搜索</b>如<b>歌手</b>,<b>语种</b>等，请到小偶像音乐网站搜索</p>
         <p>4. 如果剪切时日志出现 <b>HTTP 478</b> 失败，则是口袋48录播源文件损坏，非网络或本网站问题</p>
@@ -284,6 +284,7 @@ import {
 import DanmakuToggle from '@/components/DanmakuToggle.vue';
 import audioPlayer from '@/composables/useAudioPlayer';
 import SongSearchResults from '@/components/SongSearchResults.vue';
+import { formatBeijingDate, formatBeijingDateTime, getBeijingParts } from '@/utils/time';
 	const searchVisible = ref(false);
 	const searchQuery = ref('');
 
@@ -349,8 +350,9 @@ watch(clipOutputCategory, (cat) => {
 });
 
 // --- 日历控制变量 ---
-const calendarDate = ref(new Date()); // 当前日历显示的日期对象
-const currentYearNum = new Date().getFullYear();
+const beijingToday = getBeijingParts();
+const calendarDate = ref(new Date(beijingToday.year, beijingToday.month - 1, beijingToday.day));
+const currentYearNum = beijingToday.year;
 
 // 从切片数据中找最早的年月
 const earliestYear = computed(() => {
@@ -376,9 +378,9 @@ const latestYear = computed(() => {
   return Math.max(...dates.map(d => parseInt(d.split('-')[0])));
 });
 const latestMonth = computed(() => {
-  if (allSongs.value.length === 0) return new Date().getMonth() + 1;
+  if (allSongs.value.length === 0) return beijingToday.month;
   const dates = allSongs.value.filter(s => s.date?.startsWith(String(latestYear.value))).map(s => s.date);
-  if (dates.length === 0) return new Date().getMonth() + 1;
+  if (dates.length === 0) return beijingToday.month;
   return Math.max(...dates.map(d => parseInt(d.split('-')[1])));
 });
 
@@ -410,7 +412,7 @@ const monthList = computed(() => {
 
 // 绑定的选择器变量（默认今天）
 const selectedYear = ref(currentYearNum);
-const selectedMonth = ref(new Date().getMonth() + 1);
+const selectedMonth = ref(beijingToday.month);
 
 // 当下拉框变化时，更新日历
 const updateCalendar = () => {
@@ -624,7 +626,7 @@ const handleBatchDownload = async () => {
   });
   try {
     const content = await zip.generateAsync({ type: 'blob' });
-    const dateStr = new Date().toISOString().slice(0, 10);
+    const dateStr = formatBeijingDate(Date.now());
     const link = document.createElement('a');
     link.href = URL.createObjectURL(content);
     link.download = `Sihui_Archive_${dateStr}.zip`;
@@ -669,8 +671,7 @@ const findReplayByTime = async (pocketId, targetTime) => {
     const data = await p48.getLiveList(Number(pocketId), next);
     if (data?.content?.liveList?.length) {
       for (const r of data.content.liveList) {
-        const ctime = new Date(Number(r.ctime));
-        const timeStr = `${ctime.getFullYear()}-${String(ctime.getMonth()+1).padStart(2,'0')}-${String(ctime.getDate()).padStart(2,'0')} ${String(ctime.getHours()).padStart(2,'0')}:${String(ctime.getMinutes()).padStart(2,'0')}:${String(ctime.getSeconds()).padStart(2,'0')}`;
+        const timeStr = formatBeijingDateTime(r.ctime);
         if (timeStr === targetTime) return r;
       }
       next = data.content.next;
