@@ -26,9 +26,9 @@
 ## 1. 全局文字替换
 
 ```bash
-# 所有源文件：谭思慧 → 徐郑子滢，CGT48 → GNZ48
+# 所有源文件：谭思慧 → 徐郑子滢，SNH48 → GNZ48
 sed -i 's/谭思慧/徐郑子滢/g' src/App.vue src/views/*.vue src/components/*.vue src/composables/*.js src/utils/*.js src/api/*.js src/router/index.js src/main.js index.html vite.config.js
-
+sed -i 's/SNH48/GNZ48/g' src/App.vue src/views/About.vue index.html vite.config.js
 ```
 
 ## 2. 从 TSH 同步时必须保留的公共逻辑
