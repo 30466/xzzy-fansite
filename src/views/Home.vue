@@ -592,7 +592,8 @@ const selectDate = (date) => {
 // --- 其他逻辑保持不变 ---
 const copyAndJump = async (item) => {
   const dateForSearch = item.date.replace(/-/g, '');
-  const keywords = `${item.cleanName} 徐郑子滢 ${dateForSearch}`;
+  // 音乐站搜索参数使用中英文分号分隔关键词，不能再用空格。
+  const keywords = `${item.cleanName};徐郑子滢;${dateForSearch}`;
   navigator.clipboard.writeText(keywords).catch(() => {});
   searchQuery.value = keywords;
   searchVisible.value = true;
