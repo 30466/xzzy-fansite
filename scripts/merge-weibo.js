@@ -51,6 +51,19 @@ function isRetweet(post) {
   return post.isRetweet === true || post.is_retweet === true || Boolean(post.retweetedStatus);
 }
 
+function normalizePost(post) {
+  if (!post || typeof post !== 'object') return post;
+
+  // weibo-core 导出的音频标题字段为 audioTitle；兼容历史/外部数据中的 snake_case 写法，
+  // 并递归保留转发原帖的音频标题，供站点展示层统一读取。
+  const normalized = {
+    ...post,
+    audioTitle: post.audioTitle ?? post.audio_title ?? null,
+  };
+  if (post.retweetedStatus) normalized.retweetedStatus = normalizePost(post.retweetedStatus);
+  return normalized;
+}
+
 const accountNames = fs.readFileSync(ACCOUNT_LIST, 'utf8')
   .split(/\r?\n/)
   .map((line) => line.trim())
@@ -110,8 +123,8 @@ for (const listedName of accountNames) {
         continue;
       }
       if (postsById.has(id)) duplicateCount += 1;
-      // 原样保留爬虫导出的全部微博字段，不做有损字段映射。
-      postsById.set(id, post);
+      // 保留爬虫导出的全部微博字段，并显式统一音频标题字段。
+      postsById.set(id, normalizePost(post));
     }
 
     accounts.push({
