@@ -2,9 +2,9 @@
   <section class="recommend-view">
     <header class="recommend-header">
       <el-radio-group v-model="platform" size="large" aria-label="选择安利平台">
-        <el-radio-button label="bilibili">📺 B站</el-radio-button>
-        <el-radio-button label="weibo">🔴 微博</el-radio-button>
-        <el-radio-button label="douyin">♪ 抖音</el-radio-button>
+        <el-radio-button label="bilibili"><i class="fab fa-bilibili platform-icon bilibili-icon"></i>B站</el-radio-button>
+        <el-radio-button label="weibo"><i class="fab fa-weibo platform-icon weibo-icon"></i>微博</el-radio-button>
+        <el-radio-button label="douyin"><i class="fab fa-tiktok platform-icon douyin-icon"></i>抖音</el-radio-button>
       </el-radio-group>
       <nav class="source-links" aria-label="安利数据来源">
         <a href="https://github.com/30466/bili-core" target="_blank" rel="noopener noreferrer">B站数据项目 bili-core</a>
@@ -58,4 +58,8 @@ watch(platform, value => {
 .source-links a { color: #909399; text-decoration: none; }
 .source-links a:hover { color: #409EFF; text-decoration: underline; }
 .update-time { margin: 6px 0 0; color: #a8abb2; font-size: 12px; }
+.platform-icon { margin-right: 6px; }
+.bilibili-icon { color: #00a1d6; }
+.weibo-icon { color: #e6162d; }
+.douyin-icon { color: #161823; }
 </style>
